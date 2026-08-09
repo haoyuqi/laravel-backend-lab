@@ -159,6 +159,38 @@ jobs:
       - name: Install Node dependencies
         run: npm ci --quiet
 
+      - name: Apply Laravel Mix Webpack compatibility patch
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const patches = [
+            [
+              'node_modules/laravel-mix/src/webpackPlugins/BuildOutputPlugin.js',
+              /const \{ formatSize \} = require\([^;]+;\n/,
+              'const formatSize = size => String(size);\n',
+            ],
+            [
+              'node_modules/laravel-mix/src/builder/webpack-plugins.js',
+              "if (process.env.NODE_ENV !== 'test') {",
+              'if (false) {',
+            ],
+          ];
+
+          for (const [file, find, replace] of patches) {
+            const source = fs.readFileSync(file, 'utf8');
+            const patched = source.replace(find, replace);
+
+            if (patched === source) {
+              throw new Error(`Unable to apply Laravel Mix compatibility patch: ${file}`);
+            }
+
+            fs.writeFileSync(file, patched);
+          }
+          NODE
+
+      - name: Build frontend assets
+        run: npm run dev
+
       - name: Generate application key
         run: php artisan key:generate
 
