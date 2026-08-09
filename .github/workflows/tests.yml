@@ -175,6 +175,16 @@ jobs:
           test -n "$driver_path"
           chmod +x "$driver_path"
           ln -sf "$driver_path" vendor/laravel/dusk/bin/chromedriver-linux
+          vendor/laravel/dusk/bin/chromedriver-linux --port=9515 > storage/logs/chromedriver.log 2>&1 &
+
+      - name: Wait for ChromeDriver
+        run: |
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:9515/status > /dev/null && exit 0
+            sleep 1
+          done
+          cat storage/logs/chromedriver.log
+          exit 1
 
       - name: Start application server
         run: php artisan serve --host 127.0.0.1 --port 8000 --no-reload &
@@ -191,6 +201,7 @@ jobs:
         run: php artisan dusk
         env:
           APP_URL: http://127.0.0.1:8000
+          LARAVEL_SAIL: 1
 
       - name: Upload browser screenshots
         if: failure()
@@ -207,5 +218,14 @@ jobs:
         with:
           name: browser-console
           path: tests/Browser/console
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload ChromeDriver log
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chromedriver-log
+          path: storage/logs/chromedriver.log
           if-no-files-found: ignore
           retention-days: 14
