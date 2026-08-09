@@ -20,3 +20,4 @@ yarn-error.log
 .env.dusk.local
 /storage/bing-wallpaper/
 /storage/backup/
+AGENTS.md
