@@ -1,0 +1,219 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-tests:
+    name: PHP tests (PHP ${{ matrix.php-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: true
+      matrix:
+        php-version: ['8.3']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: laravel
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: redis
+          tools: composer:v2
+
+      - name: Cache Composer downloads
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-php-${{ matrix.php-version }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php-${{ matrix.php-version }}-
+
+      - name: Copy CI environment
+        run: cp .env.ci .env
+
+      - name: Install Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Prepare application directories
+        run: chmod -R 777 storage bootstrap/cache
+
+      - name: Run migrations
+        run: php artisan migrate
+
+      - name: Run PHP tests
+        run: php artisan test
+
+  browser-tests:
+    name: Browser tests (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    strategy:
+      fail-fast: true
+      matrix:
+        node-version: ['20']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: laravel
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.3'
+          extensions: redis
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Cache Composer downloads
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-php-8.3-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php-8.3-
+
+      - name: Copy CI environment
+        run: cp .env.ci .env
+
+      - name: Install Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Install Node dependencies
+        run: npm ci --quiet
+
+      - name: Build frontend assets
+        run: npm run dev
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Prepare application directories
+        run: chmod -R 777 storage bootstrap/cache
+
+      - name: Run migrations
+        run: php artisan migrate
+
+      - name: Start ChromeDriver
+        run: |
+          php artisan dusk:chrome-driver "$(google-chrome --version | awk '{print $3}' | cut -d. -f1)"
+          ./vendor/laravel/dusk/bin/chromedriver-linux --port=9515 &
+
+      - name: Wait for ChromeDriver
+        run: |
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:9515/status > /dev/null && exit 0
+            sleep 1
+          done
+          exit 1
+
+      - name: Start application server
+        run: php artisan serve --host 127.0.0.1 --port 8000 --no-reload &
+
+      - name: Wait for application server
+        run: |
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8000 > /dev/null && exit 0
+            sleep 1
+          done
+          exit 1
+
+      - name: Run Dusk tests
+        run: php artisan dusk
+        env:
+          APP_URL: http://127.0.0.1:8000
+
+      - name: Upload browser screenshots
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-screenshots
+          path: tests/Browser/screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload browser console logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-console
+          path: tests/Browser/console
+          if-no-files-found: ignore
+          retention-days: 14
