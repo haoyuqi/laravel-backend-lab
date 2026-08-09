@@ -159,9 +159,6 @@ jobs:
       - name: Install Node dependencies
         run: npm ci --quiet
 
-      - name: Build frontend assets
-        run: npm run dev
-
       - name: Generate application key
         run: php artisan key:generate
 
