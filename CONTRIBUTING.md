@@ -34,6 +34,23 @@ All pull requests should be submitted from a feature or bugfix branch. Please us
 *   `fix/82-visitor-log-error`
 *   `chore/88-remove-deprecated-packages`
 
+### Long-lived Branches
+
+The repository maintains the following permanent long-lived branches:
+
+| Branch | Purpose |
+|--------|---------|
+| `master` | Stable, production-ready code. Always reflects the latest tagged release. Never committed to directly. |
+| `develop` | Integration branch for ongoing development. All routine feature branches target here. |
+
+When a major refactoring or version upgrade is planned, a dedicated release branch (e.g. `2.x`) is created. All related PRs target this branch instead of `develop`. Once the milestone is complete, the release branch is merged into `develop`, then `develop` is merged into `master` and a version tag is created (e.g. `v2.0.0`). The release branch is then deleted.
+
+**Merge flow:**
+```
+feat/* ──► develop ──► master   (routine development)
+feat/* ──► 2.x ──► develop ──► master   (major version refactoring)
+```
+
 ### Commit Messages
 
 Commit messages should follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
@@ -55,6 +72,7 @@ Commit messages should follow the [Conventional Commits](https://www.conventiona
 *   Write tests for your changes, if applicable.
 *   Make sure all tests pass before submitting the PR.
 *   Keep pull requests small and focused on a single issue.
+*   Target the correct base branch: use `develop` for routine work, or the active release branch (e.g. `2.x`) for major version refactoring. Do not open PRs directly against `master`.
 
 ## Code of Conduct
 
