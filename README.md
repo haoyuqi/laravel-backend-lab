@@ -41,7 +41,6 @@
 |--------------------------------------------------------------------------------|---------------------|---------------------------------------------------------|
 | [Laravel Debugbar](https://github.com/barryvdh/laravel-debugbar)               | 调试工具                | dev                                                     |
 | [Laravel IDE Helper Generator](https://github.com/barryvdh/laravel-ide-helper) | IDE 开发工具            | dev                                                     |
-| [Laravel UI](https://github.com/laravel/ui)                                    | Bootstrap 和 Vue 脚手架 |                                                         |
 | [Laravel Horizon](https://github.com/laravel/horizon)                          | 队列系统                |                                                         |
 | [Laravel-lang](https://github.com/overtrue/laravel-lang)                       | 语言包                 |                                                         |
 | [Laravel Telescope](https://github.com/laravel/telescope)                      | 调试工具                |                                                         |
