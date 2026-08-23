@@ -42,7 +42,7 @@
 | [Laravel Debugbar](https://github.com/barryvdh/laravel-debugbar)               | 调试工具                | dev                                                     |
 | [Laravel IDE Helper Generator](https://github.com/barryvdh/laravel-ide-helper) | IDE 开发工具            | dev                                                     |
 | [Laravel Horizon](https://github.com/laravel/horizon)                          | 队列系统                |                                                         |
-| [Laravel-lang](https://github.com/overtrue/laravel-lang)                       | 语言包                 |                                                         |
+| [Laravel-Lang](https://github.com/Laravel-Lang/common)                         | 语言包                 |                                                         |
 | [Laravel Telescope](https://github.com/laravel/telescope)                      | 调试工具                |                                                         |
 | [Sort functions](https://github.com/haoyuqi/sort-function)                     | 排序函数                | 练习用开发的 Composer 包                                       |
 | [Laravel-admin](https://github.com/z-song/laravel-admin)                       | 管理后台                |                                                         |
