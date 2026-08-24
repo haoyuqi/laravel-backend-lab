@@ -31,7 +31,7 @@ class AddBlackListMenuInAdmin extends Migration
             DB::table('admin_role_menu')->insert(['menu_id' => $admin_menu_id, 'role_id' => 1]);
 
             DB::commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             Log::error($e->getMessage());
         }
@@ -53,7 +53,7 @@ class AddBlackListMenuInAdmin extends Migration
                 DB::commit();
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             Log::error($e->getMessage());
         }

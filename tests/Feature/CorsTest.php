@@ -30,7 +30,7 @@ class CorsTest extends TestCase
         });
     }
 
-    public function testCorsPreflightRequest(): void
+    public function test_cors_preflight_request(): void
     {
         $response = $this->json('OPTIONS', '/test-cors', [], [
             'Origin' => 'https://example.com',
@@ -43,7 +43,7 @@ class CorsTest extends TestCase
             ->assertHeader('Access-Control-Allow-Methods', 'POST');
     }
 
-    public function testCorsGetRequestReturnsAllowedOrigin(): void
+    public function test_cors_get_request_returns_allowed_origin(): void
     {
         $response = $this->get('/test-cors', [
             'Origin' => 'https://example.com',
@@ -54,7 +54,7 @@ class CorsTest extends TestCase
             ->assertJson(['message' => 'cors-ok']);
     }
 
-    public function testNonCorsPathDoesNotReturnCorsHeaders(): void
+    public function test_non_cors_path_does_not_return_cors_headers(): void
     {
         Route::get('/non-cors', function () {
             return response()->json(['message' => 'non-cors']);

@@ -6,7 +6,7 @@ use Tests\TestCase;
 
 class IndexControllerTest extends TestCase
 {
-    public function testIndex()
+    public function test_index()
     {
         $response = $this->get('/');
 
@@ -16,7 +16,7 @@ class IndexControllerTest extends TestCase
             ->assertViewHas('info', 'Hello World');
     }
 
-    public function testError()
+    public function test_error()
     {
         $response = $this->get('/error');
 
@@ -36,7 +36,7 @@ class IndexControllerTest extends TestCase
             ->assertViewHas('info', now()->toDateTimeString());
     }
 
-    public function testTest()
+    public function test_test()
     {
         $response = $this->get('/test');
 

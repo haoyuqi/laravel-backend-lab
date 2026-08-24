@@ -18,7 +18,7 @@ class AddToBlackList extends BatchAction
             if ($black_list) {
                 $black_list->deleted_at = null;
             } else {
-                $black_list = new BlackList();
+                $black_list = new BlackList;
             }
 
             $model->blackList()->save($black_list);

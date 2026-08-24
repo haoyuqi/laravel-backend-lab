@@ -6,7 +6,7 @@ use Tests\TestCase;
 
 class SortControllerTest extends TestCase
 {
-    public function testBubbleSort()
+    public function test_bubble_sort()
     {
         $response = $this->get('/sort/bubble');
         $response->assertStatus(302)
@@ -40,7 +40,7 @@ class SortControllerTest extends TestCase
             ->assertSeeTextInOrder($arr);
     }
 
-    public function testQuickSort()
+    public function test_quick_sort()
     {
         $response = $this->get('/sort/quick');
         $response->assertStatus(302)
@@ -74,7 +74,7 @@ class SortControllerTest extends TestCase
             ->assertSeeTextInOrder($arr);
     }
 
-    public function testSelectSort()
+    public function test_select_sort()
     {
         $response = $this->get('/sort/select');
         $response->assertStatus(302)
@@ -108,7 +108,7 @@ class SortControllerTest extends TestCase
             ->assertSeeTextInOrder($arr);
     }
 
-    public function testInsertSort()
+    public function test_insert_sort()
     {
         $response = $this->get('/sort/insert');
         $response->assertStatus(302)

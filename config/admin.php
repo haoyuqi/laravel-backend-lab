@@ -1,5 +1,12 @@
 <?php
 
+use App\Admin\Controllers\AuthController;
+use Encore\Admin\Auth\Database\Administrator;
+use Encore\Admin\Auth\Database\Menu;
+use Encore\Admin\Auth\Database\Permission;
+use Encore\Admin\Auth\Database\Role;
+use Encore\Admin\Grid\Displayers\DropdownActions;
+
 return [
 
     /*
@@ -110,7 +117,7 @@ return [
     */
     'auth' => [
 
-        'controller' => App\Admin\Controllers\AuthController::class,
+        'controller' => AuthController::class,
 
         'guard' => 'admin',
 
@@ -124,7 +131,7 @@ return [
         'providers' => [
             'admin' => [
                 'driver' => 'eloquent',
-                'model' => Encore\Admin\Auth\Database\Administrator::class,
+                'model' => Administrator::class,
             ],
         ],
 
@@ -178,19 +185,19 @@ return [
 
         // User tables and model.
         'users_table' => 'admin_users',
-        'users_model' => Encore\Admin\Auth\Database\Administrator::class,
+        'users_model' => Administrator::class,
 
         // Role table and model.
         'roles_table' => 'admin_roles',
-        'roles_model' => Encore\Admin\Auth\Database\Role::class,
+        'roles_model' => Role::class,
 
         // Permission table and model.
         'permissions_table' => 'admin_permissions',
-        'permissions_model' => Encore\Admin\Auth\Database\Permission::class,
+        'permissions_model' => Permission::class,
 
         // Menu table and model.
         'menu_table' => 'admin_menu',
-        'menu_model' => Encore\Admin\Auth\Database\Menu::class,
+        'menu_model' => Menu::class,
 
         // Pivot table for table above.
         'operation_log_table' => 'admin_operation_log',
@@ -374,7 +381,7 @@ return [
     | The global Grid action display class.
     |--------------------------------------------------------------------------
     */
-    'grid_action_class' => \Encore\Admin\Grid\Displayers\DropdownActions::class,
+    'grid_action_class' => DropdownActions::class,
 
     /*
     |--------------------------------------------------------------------------

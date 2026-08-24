@@ -11,7 +11,7 @@ class LocalizationTest extends TestCase
     /**
      * Test that application locale is configured to zh_CN.
      */
-    public function testApplicationLocaleIsZhCn(): void
+    public function test_application_locale_is_zh_cn(): void
     {
         $this->assertEquals('zh_CN', config('app.locale'));
         $this->assertEquals('zh_CN', App::getLocale());
@@ -20,7 +20,7 @@ class LocalizationTest extends TestCase
     /**
      * Test that form validator returns error messages in Simplified Chinese.
      */
-    public function testValidatorReturnsChineseErrorMessages(): void
+    public function test_validator_returns_chinese_error_messages(): void
     {
         $validator = Validator::make([], [
             'email' => 'required|email',
@@ -39,7 +39,7 @@ class LocalizationTest extends TestCase
     /**
      * Test that core translation lines resolve to Simplified Chinese.
      */
-    public function testCoreTranslationsResolveInChinese(): void
+    public function test_core_translations_resolve_in_chinese(): void
     {
         $this->assertNotEquals('auth.failed', __('auth.failed'));
         $this->assertNotEmpty(__('auth.failed'));

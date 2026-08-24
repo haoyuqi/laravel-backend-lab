@@ -1,5 +1,7 @@
 <?php
 
+use Encore\Admin\Form;
+
 /**
  * Laravel-admin - admin builder based on Laravel.
  *
@@ -17,4 +19,4 @@
  * Admin::css('/packages/prettydocs/css/styles.css');
  * Admin::js('/packages/prettydocs/js/main.js');
  */
-Encore\Admin\Form::forget(['map', 'editor']);
+Form::forget(['map', 'editor']);

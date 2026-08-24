@@ -28,7 +28,7 @@
         "barryvdh/laravel-ide-helper": "^2.12",
         "filp/whoops": "^2.14",
         "laravel/dusk": "^7.9",
-        "laravel/pint": "^1.10",
+        "laravel/pint": "^1.30",
         "laravel/sail": "^1.13",
         "mockery/mockery": "^1.5",
         "nunomaduro/collision": "^6.1",
