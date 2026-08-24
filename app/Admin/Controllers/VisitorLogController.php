@@ -24,7 +24,7 @@ class VisitorLogController extends AdminController
      */
     protected function grid()
     {
-        $grid = new Grid(new VisitorLog());
+        $grid = new Grid(new VisitorLog);
 
         $grid->column('id', __('Id'));
         $grid->column('visitor_id', __('Visitor id'));
@@ -63,7 +63,7 @@ class VisitorLogController extends AdminController
      */
     protected function form()
     {
-        $form = new Form(new VisitorLog());
+        $form = new Form(new VisitorLog);
 
         $form->number('visitor_id', __('Visitor id'));
         $form->url('url', __('Url'));
