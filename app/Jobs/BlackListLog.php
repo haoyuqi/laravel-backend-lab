@@ -52,7 +52,7 @@ class BlackListLog implements ShouldQueue
             return;
         }
 
-        $black_list_log = new \App\Models\BlackListLog();
+        $black_list_log = new \App\Models\BlackListLog;
         $black_list_log->url = $this->url;
 
         $black_list->logs()->save($black_list_log);

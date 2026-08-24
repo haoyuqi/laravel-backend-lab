@@ -49,7 +49,7 @@ class RecordVisitors implements ShouldQueue
             ['city' => $getCityByIp->getCity($this->ip)]
         );
 
-        $visitor_log = new VisitorLog();
+        $visitor_log = new VisitorLog;
         $visitor_log->url = $this->url;
 
         $visitor->logs()->save($visitor_log);

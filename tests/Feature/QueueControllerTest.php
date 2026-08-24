@@ -11,7 +11,7 @@ class QueueControllerTest extends TestCase
      *
      * @return void
      */
-    public function testCreate()
+    public function test_create()
     {
         $response = $this->get('/queue/create');
         $response->assertStatus(302)

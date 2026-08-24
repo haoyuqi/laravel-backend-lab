@@ -28,7 +28,7 @@ class VisitorController extends AdminController
      */
     protected function grid()
     {
-        $grid = new Grid(new Visitor());
+        $grid = new Grid(new Visitor);
 
         $grid->model()->withCount([
             'logs as all_logs_count',
@@ -65,7 +65,7 @@ class VisitorController extends AdminController
         $grid->column('updated_at', __(Visitor::$alias['updated_at']))->sortable();
 
         $grid->batchActions(function ($batch) {
-            $batch->add(new AddToBlackList());
+            $batch->add(new AddToBlackList);
         });
 
         $grid->filter(function ($filter) {
@@ -140,7 +140,7 @@ class VisitorController extends AdminController
      */
     protected function form()
     {
-        $form = new Form(new Visitor());
+        $form = new Form(new Visitor);
 
         $form->ip('ip', __('Ip'));
         $form->text('city', __('City'));

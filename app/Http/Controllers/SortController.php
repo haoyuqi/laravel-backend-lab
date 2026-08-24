@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CheckCountRequest;
+use Illuminate\Http\JsonResponse;
 
 class SortController extends Controller
 {
@@ -19,7 +20,7 @@ class SortController extends Controller
     /**
      * 冒泡排序
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function bubbleSort()
     {
@@ -29,7 +30,7 @@ class SortController extends Controller
     /**
      * 快速排序
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function quickSort()
     {
@@ -39,7 +40,7 @@ class SortController extends Controller
     /**
      * 选择排序
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function selectSort()
     {
@@ -49,7 +50,7 @@ class SortController extends Controller
     /**
      * 插入排序
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function insertSort()
     {

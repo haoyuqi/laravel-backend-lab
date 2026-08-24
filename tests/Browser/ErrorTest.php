@@ -12,7 +12,7 @@ class ErrorTest extends DuskTestCase
      *
      * @return void
      */
-    public function testPage()
+    public function test_page()
     {
         $this->browse(function (Browser $browser) {
             $browser->visit('/error')

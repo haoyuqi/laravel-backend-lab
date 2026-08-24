@@ -24,7 +24,7 @@ class BlackListLogController extends AdminController
      */
     protected function grid()
     {
-        $grid = new Grid(new BlackListLog());
+        $grid = new Grid(new BlackListLog);
 
         $grid->column('id', __('Id'));
         $grid->column('black_list_id', __('Black list id'));
@@ -63,7 +63,7 @@ class BlackListLogController extends AdminController
      */
     protected function form()
     {
-        $form = new Form(new BlackListLog());
+        $form = new Form(new BlackListLog);
 
         $form->number('black_list_id', __('Black list id'));
         $form->url('url', __('Url'));
