@@ -28,7 +28,7 @@ class BlackListController extends AdminController
      */
     protected function grid()
     {
-        $grid = new Grid(new BlackList());
+        $grid = new Grid(new BlackList);
 
         $grid->model()->orderBy('id', 'desc');
         $grid->model()->withCount([
@@ -125,7 +125,7 @@ class BlackListController extends AdminController
      */
     protected function form()
     {
-        $form = new Form(new BlackList());
+        $form = new Form(new BlackList);
 
         $form->ip('ip', __(BlackList::$alias['ip']));
 

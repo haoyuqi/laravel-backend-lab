@@ -41,13 +41,13 @@ class SaveVisitsCountCommand extends Command
     {
         $yesterday = now()->subDay();
 
-        $uv = new VisitorStatistics();
+        $uv = new VisitorStatistics;
         $uv->type = 'uv';
         $uv->date = $yesterday;
         $uv->count = Redis::scard('uv_set_'.$yesterday->toDateString()) ?? 0;
         $uv->save();
 
-        $pv = new VisitorStatistics();
+        $pv = new VisitorStatistics;
         $pv->type = 'pv';
         $pv->date = $yesterday;
         $pv->count = Redis::get('pv_count_'.$yesterday->toDateString()) ?? 0;

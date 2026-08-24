@@ -35,7 +35,7 @@ class Kernel extends ConsoleKernel
         //          ->hourly();
 
         $schedule->call(function () {
-            event(new PushTimeEvent());
+            event(new PushTimeEvent);
         })->everyMinute();
 
         $schedule->command('backup:run')->dailyAt('01:00');

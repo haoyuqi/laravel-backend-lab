@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->app->bind(GetCityByIpAbstract::class, function ($app) {
-            return new GeoIP(new Client());
+            return new GeoIP(new Client);
             //            return new FreeAPI(new Client());
         });
     }
