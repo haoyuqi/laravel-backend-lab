@@ -57,9 +57,9 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
+use Illuminate\Translation\TranslationServiceProvider;
 use Illuminate\Validation\ValidationServiceProvider;
 use Illuminate\View\ViewServiceProvider;
-use Overtrue\LaravelLang\TranslationServiceProvider;
 
 return [
 
@@ -219,14 +219,13 @@ return [
         RedisServiceProvider::class,
         PasswordResetServiceProvider::class,
         SessionServiceProvider::class,
-        // Illuminate\Translation\TranslationServiceProvider::class,
+        TranslationServiceProvider::class,
         ValidationServiceProvider::class,
         ViewServiceProvider::class,
 
         /*
          * Package Service Providers...
          */
-        TranslationServiceProvider::class,
 
         /*
          * Application Service Providers...
