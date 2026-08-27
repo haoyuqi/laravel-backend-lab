@@ -206,8 +206,10 @@ jobs:
           driver_path="$(find "$PWD/vendor/laravel/dusk/bin" -type f \( -name chromedriver -o -name chromedriver-linux \) -print -quit)"
           test -n "$driver_path"
           chmod +x "$driver_path"
-          ln -sf "$driver_path" vendor/laravel/dusk/bin/chromedriver-linux
-          vendor/laravel/dusk/bin/chromedriver-linux --port=9515 > storage/logs/chromedriver.log 2>&1 &
+          if [ "$driver_path" != "$PWD/vendor/laravel/dusk/bin/chromedriver-linux" ]; then
+            ln -sf "$driver_path" vendor/laravel/dusk/bin/chromedriver-linux
+          fi
+          "$driver_path" --port=9515 > storage/logs/chromedriver.log 2>&1 &
 
       - name: Wait for ChromeDriver
         run: |

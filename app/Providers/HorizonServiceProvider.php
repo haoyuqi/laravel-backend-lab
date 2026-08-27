@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use Encore\Admin\Facades\Admin;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Horizon\Horizon;
 use Laravel\Horizon\HorizonApplicationServiceProvider;
@@ -35,10 +34,9 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     protected function gate()
     {
         Gate::define('viewHorizon', function ($user = null) {
-            /*return in_array($user->email, [
-                //
-            ]);*/
-            return Admin::user()->isAdministrator();
+            $allowedEmails = array_filter(explode(',', (string) env('ADMIN_EMAILS', '')));
+
+            return $user && in_array($user->email, $allowedEmails);
         });
     }
 }

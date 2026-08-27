@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use Haoyuqi\DownloadBingWallpaper\Contracts\BingWallpaperInterface;
+use App\Libraries\BingWallpaper\Contracts\BingWallpaperInterface;
 use Illuminate\Console\Command;
 
 class DownloadBingWallpaperCommand extends Command
