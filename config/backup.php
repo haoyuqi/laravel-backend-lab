@@ -182,11 +182,11 @@ return [
         'notifiable' => Notifiable::class,
 
         'mail' => [
-            'to' => env('ADMIN_EMAILS', 'your@example.com'),
+            'to' => env('ADMIN_EMAILS') ?: 'your@example.com',
 
             'from' => [
-                'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-                'name' => env('MAIL_FROM_NAME', 'Example'),
+                'address' => env('MAIL_FROM_ADDRESS') ?: 'hello@example.com',
+                'name' => env('MAIL_FROM_NAME') ?: 'Example',
             ],
         ],
 
