@@ -12,24 +12,24 @@
         "guzzlehttp/guzzle": "^7.8",
         "haoyuqi/sort-function": "^1.4",
         "laravel-lang/common": "^6.0",
-        "laravel/framework": "^12.0",
+        "laravel/framework": "^13.0",
         "laravel/horizon": "^5.30",
         "laravel/telescope": "^5.0",
-        "laravel/tinker": "^2.10",
-        "spatie/laravel-backup": "^9.0",
+        "laravel/tinker": "^3.0",
+        "spatie/laravel-backup": "^10.0",
         "spatie/laravel-ignition": "^2.4",
         "torann/geoip": "^3.0"
     },
     "require-dev": {
-        "barryvdh/laravel-debugbar": "^3.16",
+        "barryvdh/laravel-debugbar": "^4.0",
         "barryvdh/laravel-ide-helper": "^3.0",
         "filp/whoops": "^2.15",
         "laravel/dusk": "^8.0",
         "laravel/pint": "^1.30",
-        "laravel/sail": "^1.30",
+        "laravel/sail": "^1.40",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.0",
-        "phpunit/phpunit": "^11.5"
+        "phpunit/phpunit": "^12.0"
     },
     "config": {
         "optimize-autoloader": true,
