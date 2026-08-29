@@ -2,13 +2,11 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The Laravel Framework.",
-    "keywords": [
-        "framework",
-        "laravel"
-    ],
+    "keywords": ["framework", "laravel"],
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "filament/filament": "^3.0",
         "guzzlehttp/guzzle": "^7.8",
         "haoyuqi/sort-function": "^1.4",
         "laravel-lang/common": "^6.0",
@@ -23,6 +21,7 @@
     "require-dev": {
         "barryvdh/laravel-debugbar": "^4.0",
         "barryvdh/laravel-ide-helper": "^3.0",
+        "fakerphp/faker": "^1.23",
         "filp/whoops": "^2.15",
         "laravel/dusk": "^8.0",
         "laravel/pint": "^1.30",
@@ -61,7 +60,8 @@
     "scripts": {
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi"
+            "@php artisan package:discover --ansi",
+            "@php artisan filament:upgrade"
         ],
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
