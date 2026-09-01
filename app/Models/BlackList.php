@@ -30,6 +30,6 @@ class BlackList extends BaseModel
 
     public function city()
     {
-        return $this->belongsTo(Visitor::class, 'ip', 'ip');
+        return $this->belongsTo(Visitor::class, 'ip', 'ip')->withTrashed();
     }
 }

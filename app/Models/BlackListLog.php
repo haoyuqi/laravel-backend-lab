@@ -23,6 +23,6 @@ class BlackListLog extends BaseModel
 
     public function blackList()
     {
-        return $this->belongsTo(BlackList::class);
+        return $this->belongsTo(BlackList::class)->withTrashed();
     }
 }
