@@ -3,6 +3,7 @@
 namespace Tests\Browser\Filament;
 
 use App\Models\BlackList;
+use App\Models\BlackListLog;
 use App\Models\User;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
@@ -46,11 +47,18 @@ class BlackListTest extends DuskTestCase
             ['name' => 'Admin', 'password' => bcrypt('password')]
         );
 
-        $this->browse(function (Browser $browser) use ($admin) {
+        $blackList = BlackList::firstOrCreate(['ip' => '127.0.0.99']);
+        $log = new BlackListLog;
+        $log->url = 'https://example.com/blocked-dusk';
+        $blackList->logs()->save($log);
+
+        $this->browse(function (Browser $browser) use ($admin, $blackList, $log) {
             $browser->loginAs($admin)
                 ->visit('/filament/black-list-logs')
                 ->assertPathIs('/filament/black-list-logs')
                 ->assertSee('拦截日志')
+                ->assertSee($blackList->ip)
+                ->assertSee($log->url)
                 ->assertSee('IP')
                 ->assertSee('URL')
                 ->assertSee('拦截时间');
