@@ -10,6 +10,8 @@ class BlackList extends BaseModel
 
     protected $dates = ['deleted_at'];
 
+    protected $fillable = ['ip'];
+
     public static $alias = [
         'id' => 'ID',
         'ip' => 'IP',
