@@ -27,6 +27,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('filament')
             ->login()
+            ->brandName('Laravel Backend Lab')
             ->colors([
                 'primary' => Color::Amber,
             ])
