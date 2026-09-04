@@ -66,7 +66,11 @@ class HealthStatusWidget extends Widget
 
     protected function checkDatabaseHealth(): array
     {
-        $driver = (string) config('database.default', 'pgsql');
+        try {
+            $driver = (string) DB::connection()->getDriverName();
+        } catch (\Throwable) {
+            $driver = (string) config('database.default', 'pgsql');
+        }
 
         try {
             $start = microtime(true);
@@ -88,7 +92,12 @@ class HealthStatusWidget extends Widget
         } catch (\Throwable) {
             return [
                 'status' => 'unhealthy',
-                'name' => ucfirst($driver),
+                'name' => match ($driver) {
+                    'pgsql' => 'PostgreSQL',
+                    'mysql' => 'MySQL',
+                    'sqlite' => 'SQLite',
+                    default => ucfirst($driver),
+                },
                 'driver' => $driver,
                 'latency' => '--',
                 'label' => '连接异常',

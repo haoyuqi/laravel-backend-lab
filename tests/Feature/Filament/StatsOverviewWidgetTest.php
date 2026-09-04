@@ -149,11 +149,19 @@ class StatsOverviewWidgetTest extends TestCase
 
     public function test_health_status_widget_renders_successfully(): void
     {
+        $driver = (string) config('database.default', 'pgsql');
+        $expectedDb = match ($driver) {
+            'pgsql' => 'PostgreSQL',
+            'mysql' => 'MySQL',
+            'sqlite' => 'SQLite',
+            default => ucfirst($driver),
+        };
+
         Livewire::actingAs($this->admin)
             ->test(HealthStatusWidget::class)
             ->assertSuccessful()
             ->assertSee('基础设施与服务健康')
-            ->assertSee('PostgreSQL')
+            ->assertSee($expectedDb)
             ->assertSee('Asia/Shanghai')
             ->assertSee('服务正常');
 

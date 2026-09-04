@@ -36,7 +36,7 @@ class DashboardTest extends DuskTestCase
             $browser->loginAs($admin)
                 ->visit('/filament')
                 ->assertPathIs('/filament')
-                ->assertSee('今日 PV')
+                ->waitForText('今日 PV')
                 ->assertSee('今日 UV')
                 ->assertSee('访客总数')
                 ->assertSee('黑名单 IP');
