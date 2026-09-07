@@ -28,5 +28,7 @@
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
         <env name="SESSION_DRIVER" value="array" force="true"/>
         <env name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <env name="ADMIN_EMAILS" value="" force="true"/>
     </php>
 </phpunit>
+
