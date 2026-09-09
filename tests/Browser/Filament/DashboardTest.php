@@ -13,8 +13,8 @@ class DashboardTest extends DuskTestCase
     public function test_guest_is_redirected_to_filament_login(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/filament')
-                ->assertPathIs('/filament/login');
+            $browser->visit('/admin')
+                ->assertPathIs('/admin/login');
         });
     }
 
@@ -34,8 +34,8 @@ class DashboardTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($admin) {
             $browser->loginAs($admin)
-                ->visit('/filament')
-                ->assertPathIs('/filament')
+                ->visit('/admin')
+                ->assertPathIs('/admin')
                 ->waitForText('今日 PV')
                 ->assertSee('今日 UV')
                 ->assertSee('访客总数')

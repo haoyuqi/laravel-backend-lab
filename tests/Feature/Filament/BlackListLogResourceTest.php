@@ -25,7 +25,7 @@ class BlackListLogResourceTest extends TestCase
     {
         $response = $this->get(BlackListLogResource::getUrl('index'));
 
-        $response->assertRedirect('/filament/login');
+        $response->assertRedirect('/admin/login');
     }
 
     public function test_authenticated_admin_can_access_black_list_logs_index(): void

@@ -27,7 +27,7 @@ class VisitorResourceTest extends TestCase
     {
         $response = $this->get(VisitorResource::getUrl('index'));
 
-        $response->assertRedirect('/filament/login');
+        $response->assertRedirect('/admin/login');
     }
 
     public function test_authenticated_admin_can_access_visitors_index(): void

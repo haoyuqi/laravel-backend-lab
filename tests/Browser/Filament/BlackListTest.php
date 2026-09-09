@@ -13,8 +13,8 @@ class BlackListTest extends DuskTestCase
     public function test_guest_is_redirected_to_filament_login(): void
     {
         $this->browse(function (Browser $browser) {
-            $browser->visit('/filament/black-lists')
-                ->assertPathIs('/filament/login');
+            $browser->visit('/admin/black-lists')
+                ->assertPathIs('/admin/login');
         });
     }
 
@@ -29,8 +29,8 @@ class BlackListTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($admin, $blackList) {
             $browser->loginAs($admin)
-                ->visit('/filament/black-lists')
-                ->assertPathIs('/filament/black-lists')
+                ->visit('/admin/black-lists')
+                ->assertPathIs('/admin/black-lists')
                 ->assertSee('黑名单列表')
                 ->assertSee($blackList->ip)
                 ->assertSee('今日拦截量')
@@ -54,8 +54,8 @@ class BlackListTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($admin, $blackList, $log) {
             $browser->loginAs($admin)
-                ->visit('/filament/black-list-logs')
-                ->assertPathIs('/filament/black-list-logs')
+                ->visit('/admin/black-list-logs')
+                ->assertPathIs('/admin/black-list-logs')
                 ->assertSee('拦截日志')
                 ->assertSee($blackList->ip)
                 ->assertSee($log->url)
