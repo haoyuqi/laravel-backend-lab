@@ -27,6 +27,21 @@ jobs:
       matrix:
         php-version: ['8.3']
         db:
+          # SQLite runs in-memory and needs no real DB service; the container
+          # below is only a structural placeholder because `services` applies to
+          # every matrix cell. The suite connects to sqlite `:memory:` instead.
+          - name: sqlite
+            version: 'default'
+            driver: sqlite
+            service-port: 3306
+            image: mysql:8.0
+            env:
+              MYSQL_ALLOW_EMPTY_PASSWORD: yes
+              MYSQL_DATABASE: laravel
+            health-cmd: mysqladmin ping --silent
+            test-db-name: ':memory:'
+            test-db-user: root
+            test-db-password: ''
           - name: mysql
             version: '8.0'
             driver: mysql
