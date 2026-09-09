@@ -17,6 +17,17 @@ class MigrateAdminUsersCommandTest extends TestCase
 
         $this->cleanupTestData();
         $this->createAdminUsersTable();
+
+        // In MySQL, DDL statements (Schema::create / dropIfExists) trigger an implicit commit,
+        // which commits the transaction started by RefreshDatabase and leaves MySQL in
+        // autocommit mode while Laravel's connection transaction counter remains at 1.
+        // Re-synchronize the transaction state so nested transactions and savepoints work properly.
+        if (DB::connection()->getDriverName() === 'mysql') {
+            while (DB::connection()->transactionLevel() > 0) {
+                DB::connection()->rollBack();
+            }
+            DB::connection()->beginTransaction();
+        }
     }
 
     protected function tearDown(): void
@@ -362,8 +373,10 @@ class MigrateAdminUsersCommandTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::listen(function ($query) {
-            if (str_contains(strtolower($query->sql), 'admin_users') && str_contains(strtolower($query->sql), 'delete')) {
+        $shouldFail = true;
+        DB::listen(function ($query) use (&$shouldFail) {
+            if ($shouldFail && str_contains(strtolower($query->sql), 'admin_users') && str_contains(strtolower($query->sql), 'delete')) {
+                $shouldFail = false;
                 throw new \RuntimeException('Simulated delete failure during migration transaction');
             }
         });
