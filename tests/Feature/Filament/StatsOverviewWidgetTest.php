@@ -142,7 +142,7 @@ class StatsOverviewWidgetTest extends TestCase
         $response->assertSeeLivewire(HealthStatusWidget::class);
         $response->assertSee('Laravel Backend Lab');
         $response->assertSee('GitHub 源码');
-        $response->assertSee('v2.0.0');
+        $response->assertSee('v2.1.0');
     }
 
     public function test_health_status_widget_renders_successfully(): void
