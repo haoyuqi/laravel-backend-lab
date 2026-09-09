@@ -89,32 +89,4 @@ class CleanupLegacyAdminTablesTest extends TestCase
 
         $this->assertTrue(true);
     }
-
-    public function test_migration_respects_custom_users_table_via_environment(): void
-    {
-        Schema::dropIfExists('custom_admin_users');
-        Schema::create('custom_admin_users', function (Blueprint $t) {
-            $t->increments('id');
-            $t->timestamps();
-        });
-
-        DB::table('custom_admin_users')->insert([
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $_ENV['LEGACY_ADMIN_USERS_TABLE'] = 'custom_admin_users';
-
-        try {
-            $migration = require database_path('migrations/2026_09_07_000000_cleanup_legacy_admin_tables.php');
-
-            $this->expectException(RuntimeException::class);
-            $this->expectExceptionMessage("Migration blocked: 'custom_admin_users' table still contains 1 legacy account(s).");
-
-            $migration->up();
-        } finally {
-            unset($_ENV['LEGACY_ADMIN_USERS_TABLE']);
-            Schema::dropIfExists('custom_admin_users');
-        }
-    }
 }

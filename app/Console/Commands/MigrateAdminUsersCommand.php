@@ -13,9 +13,7 @@ class MigrateAdminUsersCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'admin:migrate-users
-        {--connection= : The database connection where legacy admin tables reside}
-        {--table= : The legacy admin users table name (defaults to admin_users)}';
+    protected $signature = 'admin:migrate-users';
 
     /**
      * The console command description.
@@ -29,22 +27,16 @@ class MigrateAdminUsersCommand extends Command
      */
     public function handle(): int
     {
-        $connection = $this->option('connection') ?: env('LEGACY_ADMIN_CONNECTION');
-        $table = $this->option('table') ?: env('LEGACY_ADMIN_USERS_TABLE', 'admin_users');
-
-        $schema = Schema::connection($connection);
-        $db = DB::connection($connection);
-
-        if (! $schema->hasTable($table)) {
-            $this->info("Table '{$table}' does not exist. Nothing to migrate.");
+        if (! Schema::hasTable('admin_users')) {
+            $this->info("Table 'admin_users' does not exist. Nothing to migrate.");
 
             return self::SUCCESS;
         }
 
-        $total = $db->table($table)->count();
+        $total = DB::table('admin_users')->count();
 
         if ($total === 0) {
-            $this->info("No legacy admin accounts found in '{$table}'. Nothing to migrate.");
+            $this->info("No legacy admin accounts found in 'admin_users'. Nothing to migrate.");
 
             return self::SUCCESS;
         }
@@ -55,9 +47,9 @@ class MigrateAdminUsersCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info("Found {$total} legacy admin account(s) in '{$table}'.");
+        $this->info("Found {$total} legacy admin account(s) in 'admin_users'.");
 
-        $legacyUsers = $db->table($table)->orderBy('id')->get();
+        $legacyUsers = DB::table('admin_users')->orderBy('id')->get();
 
         foreach ($legacyUsers as $legacyUser) {
             $this->line("--- [ID: {$legacyUser->id}] Username: {$legacyUser->username} | Name: {$legacyUser->name} ---");
@@ -81,7 +73,7 @@ class MigrateAdminUsersCommand extends Command
 
                 if ($lowerAction === 'd') {
                     if ($this->confirm("Are you sure you want to permanently discard legacy account '{$legacyUser->username}'?", true)) {
-                        $db->table($table)->where('id', $legacyUser->id)->delete();
+                        DB::table('admin_users')->where('id', $legacyUser->id)->delete();
                         $this->info("Discarded legacy account '{$legacyUser->username}'.");
                         break;
                     }
@@ -124,7 +116,7 @@ class MigrateAdminUsersCommand extends Command
                     }
                 }
 
-                DB::transaction(function () use ($db, $table, $legacyUser, $email, $existingUser) {
+                DB::transaction(function () use ($legacyUser, $email, $existingUser) {
                     DB::table('users')->updateOrInsert(
                         ['email' => $email],
                         [
@@ -137,7 +129,7 @@ class MigrateAdminUsersCommand extends Command
                         ]
                     );
 
-                    $db->table($table)->where('id', $legacyUser->id)->delete();
+                    DB::table('admin_users')->where('id', $legacyUser->id)->delete();
                 });
 
                 $this->info("Successfully migrated '{$legacyUser->username}' to <{$email}>.");
@@ -145,7 +137,7 @@ class MigrateAdminUsersCommand extends Command
             }
         }
 
-        $remaining = $db->table($table)->count();
+        $remaining = DB::table('admin_users')->count();
 
         $this->newLine();
 
@@ -153,7 +145,7 @@ class MigrateAdminUsersCommand extends Command
             $this->info('All legacy admin accounts have been migrated or discarded.');
             $this->info("You may now run 'php artisan migrate' to clean up legacy admin tables.");
         } else {
-            $this->warn("{$remaining} legacy account(s) remain in '{$table}'.");
+            $this->warn("{$remaining} legacy account(s) remain in 'admin_users'.");
             $this->warn('Legacy tables will not be dropped until all accounts are migrated or discarded.');
         }
 

@@ -63,7 +63,7 @@ php artisan admin:migrate-users
 ```
 
 > [!NOTE]
-> If your 1.x deployment customized database connection or table names in `config/admin.php`, specify `--connection=<name>` and `--table=<custom_table>` (or configure `LEGACY_ADMIN_CONNECTION` and `LEGACY_ADMIN_USERS_TABLE` in `.env`).
+> Migration operates on the application's default database connection and standard table name (`admin_users`).
 
 **Interactive Options per Account**:
 - **Enter Email**: Supply a valid, unique email address for the administrator. The command transfers the account, preserving the existing bcrypt password hash and credentials.
@@ -83,9 +83,9 @@ php artisan migrate --force
 ```
 
 **Safeguard Protection**:
-- If any accounts remain in `admin_users` (or custom table configured via `LEGACY_ADMIN_USERS_TABLE`), the migration **aborts immediately** with a `RuntimeException` to prevent data loss.
+- If any accounts remain in `admin_users`, the migration **aborts immediately** with a `RuntimeException` to prevent data loss.
 - Once legacy admin accounts are empty (or on a fresh install), the migration drops all 9 legacy tables:
-  `admin_operation_log`, `admin_user_permissions`, `admin_role_users`, `admin_role_permissions`, `admin_role_menu`, `admin_permissions`, `admin_roles`, `admin_menu`, and `admin_users` (or `LEGACY_ADMIN_USERS_TABLE`).
+  `admin_operation_log`, `admin_user_permissions`, `admin_role_users`, `admin_role_permissions`, `admin_role_menu`, `admin_permissions`, `admin_roles`, `admin_menu`, and `admin_users`.
 
 
 ### Step 4: Configure Admin Email Whitelist
