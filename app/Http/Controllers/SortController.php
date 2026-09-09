@@ -7,53 +7,43 @@ use Illuminate\Http\JsonResponse;
 
 class SortController extends Controller
 {
-    private $shuffleArr;
-
-    public function __construct(CheckCountRequest $request)
+    private function getShuffleArr(CheckCountRequest $request): array
     {
-        $arr = range(1, $request->input('count'));
+        $arr = range(1, (int) $request->input('count'));
         shuffle($arr);
 
-        $this->shuffleArr = $arr;
+        return $arr;
     }
 
     /**
      * 冒泡排序
-     *
-     * @return JsonResponse
      */
-    public function bubbleSort()
+    public function bubbleSort(CheckCountRequest $request): JsonResponse
     {
-        return response()->json(bubble_sort($this->shuffleArr));
+        return response()->json(bubble_sort($this->getShuffleArr($request)));
     }
 
     /**
      * 快速排序
-     *
-     * @return JsonResponse
      */
-    public function quickSort()
+    public function quickSort(CheckCountRequest $request): JsonResponse
     {
-        return response()->json(quick_sort($this->shuffleArr));
+        return response()->json(quick_sort($this->getShuffleArr($request)));
     }
 
     /**
      * 选择排序
-     *
-     * @return JsonResponse
      */
-    public function selectSort()
+    public function selectSort(CheckCountRequest $request): JsonResponse
     {
-        return response()->json(select_sort($this->shuffleArr));
+        return response()->json(select_sort($this->getShuffleArr($request)));
     }
 
     /**
      * 插入排序
-     *
-     * @return JsonResponse
      */
-    public function insertSort()
+    public function insertSort(CheckCountRequest $request): JsonResponse
     {
-        return response()->json(insert_sort($this->shuffleArr));
+        return response()->json(insert_sort($this->getShuffleArr($request)));
     }
 }

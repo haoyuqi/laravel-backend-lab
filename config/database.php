@@ -37,7 +37,7 @@ return [
 
         'sqlite' => [
             'driver' => 'sqlite',
-            'url' => env('DATABASE_URL'),
+            'url' => env('DB_URL'),
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
@@ -45,7 +45,7 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
-            'url' => env('DATABASE_URL'),
+            'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => env('DB_DATABASE', 'forge'),
@@ -69,7 +69,7 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DATABASE_URL'),
+            'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'forge'),
@@ -84,7 +84,7 @@ return [
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',
-            'url' => env('DATABASE_URL'),
+            'url' => env('DB_URL'),
             'host' => env('DB_HOST', 'localhost'),
             'port' => env('DB_PORT', '1433'),
             'database' => env('DB_DATABASE', 'forge'),
@@ -93,6 +93,43 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Testing Connection
+        |--------------------------------------------------------------------------
+        |
+        | Dedicated connection for the PHPUnit test suite. Defaults to an
+        | in-memory SQLite database so that a fresh checkout runs with zero
+        | database provisioning and never touches the primary development
+        | database. Maintainers and CI can opt into a real driver (mysql /
+        | pgsql / mariadb) by setting TEST_DB_CONNECTION plus TEST_DB_HOST,
+        | TEST_DB_PORT, TEST_DB_DATABASE, TEST_DB_USERNAME and TEST_DB_PASSWORD.
+        |
+        | The driver intentionally reads TEST_DB_CONNECTION instead of
+        | DB_CONNECTION: PHPUnit forces DB_CONNECTION=testing, so falling back
+        | to DB_CONNECTION here would self-reference and break.
+        |
+        */
+
+        'testing' => [
+            'driver' => env('TEST_DB_CONNECTION', 'sqlite'),
+            'database' => env('TEST_DB_DATABASE', ':memory:'),
+            'host' => env('TEST_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('TEST_DB_PORT', env('DB_PORT')),
+            'username' => env('TEST_DB_USERNAME', env('DB_USERNAME', 'forge')),
+            'password' => env('TEST_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => env('TEST_DB_CONNECTION', 'sqlite') === 'pgsql' ? 'utf8' : 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'schema' => 'public',
+            'sslmode' => 'prefer',
+            'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
         ],
 
     ],

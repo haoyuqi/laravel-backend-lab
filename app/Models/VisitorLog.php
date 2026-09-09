@@ -23,6 +23,6 @@ class VisitorLog extends BaseModel
 
     public function visitor()
     {
-        return $this->belongsTo(Visitor::class);
+        return $this->belongsTo(Visitor::class)->withTrashed();
     }
 }

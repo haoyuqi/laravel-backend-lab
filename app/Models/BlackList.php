@@ -10,6 +10,8 @@ class BlackList extends BaseModel
 
     protected $dates = ['deleted_at'];
 
+    protected $fillable = ['ip'];
+
     public static $alias = [
         'id' => 'ID',
         'ip' => 'IP',
@@ -28,6 +30,6 @@ class BlackList extends BaseModel
 
     public function city()
     {
-        return $this->belongsTo(Visitor::class, 'ip', 'ip');
+        return $this->belongsTo(Visitor::class, 'ip', 'ip')->withTrashed();
     }
 }

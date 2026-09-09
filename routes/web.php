@@ -1,30 +1,24 @@
 <?php
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
-*/
+use App\Http\Controllers\IndexController;
+use App\Http\Controllers\QueueController;
+use App\Http\Controllers\SortController;
+use Illuminate\Support\Facades\Route;
 
-Route::get('/', 'IndexController@index');
-Route::get('/error', 'IndexController@error');
-Route::get('/test', 'IndexController@test');
-Route::get('/time', 'IndexController@time');
+Route::get('/', [IndexController::class, 'index']);
+Route::get('/error', [IndexController::class, 'error']);
+Route::get('/test', [IndexController::class, 'test']);
+Route::get('/time', [IndexController::class, 'time']);
 
 // queue test
-Route::group(['prefix' => 'queue'], function ($route) {
-    $route->get('/create', 'QueueController@create');
+Route::prefix('queue')->group(function () {
+    Route::get('/create', [QueueController::class, 'create']);
 });
 
 // sort
-Route::group(['prefix' => 'sort'], function ($route) {
-    $route->get('/bubble', 'SortController@bubbleSort');
-    $route->get('/quick', 'SortController@quickSort');
-    $route->get('/select', 'SortController@selectSort');
-    $route->get('/insert', 'SortController@insertSort');
+Route::prefix('sort')->group(function () {
+    Route::get('/bubble', [SortController::class, 'bubbleSort']);
+    Route::get('/quick', [SortController::class, 'quickSort']);
+    Route::get('/select', [SortController::class, 'selectSort']);
+    Route::get('/insert', [SortController::class, 'insertSort']);
 });

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Libraries\BingWallpaper\BingWallpaper;
+use App\Libraries\BingWallpaper\Contracts\BingWallpaperInterface;
 use App\Libraries\GetCityByIp\FreeAPI;
 use App\Libraries\GetCityByIp\GeoIP;
 use App\Libraries\GetCityByIp\GetCityByIpAbstract;
@@ -34,5 +36,10 @@ class AppServiceProvider extends ServiceProvider
             return new GeoIP(new Client);
             //            return new FreeAPI(new Client());
         });
+
+        $this->app->bind(
+            BingWallpaperInterface::class,
+            BingWallpaper::class
+        );
     }
 }
