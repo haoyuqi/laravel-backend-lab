@@ -11,12 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('admin_users')) {
-            $count = DB::table('admin_users')->count();
+        $connection = env('LEGACY_ADMIN_CONNECTION');
+        $usersTable = env('LEGACY_ADMIN_USERS_TABLE', 'admin_users');
+        $schema = Schema::connection($connection);
+        $db = DB::connection($connection);
+
+        if ($schema->hasTable($usersTable)) {
+            $count = $db->table($usersTable)->count();
 
             if ($count > 0) {
                 throw new RuntimeException(
-                    "Migration blocked: 'admin_users' table still contains {$count} legacy account(s). "
+                    "Migration blocked: '{$usersTable}' table still contains {$count} legacy account(s). "
                     .'To prevent data loss, please run `php artisan admin:migrate-users` before running migrations.'
                 );
             }
@@ -31,11 +36,11 @@ return new class extends Migration
             'admin_permissions',
             'admin_roles',
             'admin_menu',
-            'admin_users',
+            $usersTable,
         ];
 
-        foreach ($tables as $table) {
-            Schema::dropIfExists($table);
+        foreach (array_unique($tables) as $table) {
+            $schema->dropIfExists($table);
         }
     }
 

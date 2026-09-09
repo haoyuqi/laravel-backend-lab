@@ -35,6 +35,8 @@ class MigrateAdminUsersCommandTest extends TestCase
             'duplicate@example.com',
             'fresh@example.com',
             'tx@example.com',
+            'keep_me@example.com',
+            'custom@example.com',
         ])->delete();
     }
 
@@ -198,12 +200,84 @@ class MigrateAdminUsersCommandTest extends TestCase
                 'Overwrite existing user',
                 ['Overwrite existing user', 'Skip this account', 'Enter another email']
             )
+            ->expectsConfirmation("WARNING: This will overwrite the password and name for existing user 'Old Name' <duplicate@example.com>. Are you sure you want to proceed?", 'yes')
             ->expectsOutput("Successfully migrated 'duplicate_user' to <duplicate@example.com>.")
             ->assertSuccessful();
 
         $updated = DB::table('users')->where('email', 'duplicate@example.com')->first();
         $this->assertSame('New Name', $updated->name);
         $this->assertTrue(Hash::check('new_pass', $updated->password));
+    }
+
+    public function test_command_cancels_overwrite_when_confirmation_declined(): void
+    {
+        DB::table('users')->insert([
+            'name' => 'Original Name',
+            'email' => 'keep_me@example.com',
+            'password' => Hash::make('original_pass'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('admin_users')->insert([
+            'username' => 'cancel_overwrite_user',
+            'password' => Hash::make('attacker_pass'),
+            'name' => 'Attacker Name',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('admin:migrate-users')
+            ->expectsQuestion("Enter a valid email for 'cancel_overwrite_user', [s] to skip, or [d] to discard/delete", 'keep_me@example.com')
+            ->expectsChoice(
+                "A user with email 'keep_me@example.com' already exists (Name: Original Name). What would you like to do?",
+                'Overwrite existing user',
+                ['Overwrite existing user', 'Skip this account', 'Enter another email']
+            )
+            ->expectsConfirmation("WARNING: This will overwrite the password and name for existing user 'Original Name' <keep_me@example.com>. Are you sure you want to proceed?", 'no')
+            ->expectsOutput('Overwrite cancelled.')
+            ->expectsQuestion("Enter a valid email for 'cancel_overwrite_user', [s] to skip, or [d] to discard/delete", 's')
+            ->expectsOutput("Skipped account 'cancel_overwrite_user'.")
+            ->assertSuccessful();
+
+        $original = DB::table('users')->where('email', 'keep_me@example.com')->first();
+        $this->assertSame('Original Name', $original->name);
+        $this->assertTrue(Hash::check('original_pass', $original->password));
+        $this->assertDatabaseHas('admin_users', ['username' => 'cancel_overwrite_user']);
+    }
+
+    public function test_command_supports_custom_table_and_connection_options(): void
+    {
+        Schema::dropIfExists('custom_admin_users');
+        Schema::create('custom_admin_users', function (Blueprint $table) {
+            $table->increments('id');
+            $table->string('username', 190)->unique();
+            $table->string('password', 60);
+            $table->string('name');
+            $table->string('remember_token', 100)->nullable();
+            $table->timestamps();
+        });
+
+        DB::table('custom_admin_users')->insert([
+            'username' => 'custom_admin',
+            'password' => Hash::make('custom_secret'),
+            'name' => 'Custom Admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('admin:migrate-users', [
+            '--connection' => 'testing',
+            '--table' => 'custom_admin_users',
+        ])
+            ->expectsQuestion("Enter a valid email for 'custom_admin', [s] to skip, or [d] to discard/delete", 'custom@example.com')
+            ->expectsOutput("Successfully migrated 'custom_admin' to <custom@example.com>.")
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('users', ['email' => 'custom@example.com', 'name' => 'Custom Admin']);
+        $this->assertDatabaseMissing('custom_admin_users', ['username' => 'custom_admin']);
+
+        Schema::dropIfExists('custom_admin_users');
     }
 
     public function test_command_warns_and_retries_on_empty_or_whitespace_input(): void
