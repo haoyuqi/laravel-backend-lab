@@ -52,6 +52,19 @@ jobs:
             test-db-user: root
             test-db-password: ''
           - name: postgres
+            version: '17'
+            driver: pgsql
+            service-port: 5432
+            image: postgres:17
+            env:
+              POSTGRES_USER: root
+              POSTGRES_PASSWORD: password
+              POSTGRES_DB: laravel
+            health-cmd: pg_isready -U root
+            test-db-name: laravel
+            test-db-user: root
+            test-db-password: password
+          - name: postgres
             version: '18'
             driver: pgsql
             service-port: 5432
