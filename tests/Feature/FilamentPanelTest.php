@@ -4,14 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Filament\Pages\Auth\Login;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class FilamentPanelTest extends TestCase
 {
-    use DatabaseTransactions;
-
     public function test_filament_login_page_loads_successfully(): void
     {
         $response = $this->get('/filament/login');

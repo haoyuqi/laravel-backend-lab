@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   php-tests:
-    name: PHP tests (PHP ${{ matrix.php-version }})
+    name: PHP tests (PHP ${{ matrix.php-version }}, ${{ matrix.db.name }} ${{ matrix.db.version }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -26,20 +26,84 @@ jobs:
       fail-fast: true
       matrix:
         php-version: ['8.3']
+        db:
+          # SQLite runs in-memory and needs no real DB service; the container
+          # below is only a structural placeholder because `services` applies to
+          # every matrix cell. The suite connects to sqlite `:memory:` instead.
+          - name: sqlite
+            version: 'default'
+            driver: sqlite
+            service-port: 3306
+            image: mysql:8.0
+            env:
+              MYSQL_ALLOW_EMPTY_PASSWORD: yes
+              MYSQL_DATABASE: laravel
+            health-cmd: mysqladmin ping --silent
+            test-db-name: ':memory:'
+            test-db-user: root
+            test-db-password: ''
+          - name: mysql
+            version: '8.0'
+            driver: mysql
+            service-port: 3306
+            image: mysql:8.0
+            env:
+              MYSQL_ALLOW_EMPTY_PASSWORD: yes
+              MYSQL_DATABASE: laravel
+            health-cmd: mysqladmin ping --silent
+            test-db-name: laravel
+            test-db-user: root
+            test-db-password: ''
+          - name: mysql
+            version: '8.4'
+            driver: mysql
+            service-port: 3306
+            image: mysql:8.4
+            env:
+              MYSQL_ALLOW_EMPTY_PASSWORD: yes
+              MYSQL_DATABASE: laravel
+            health-cmd: mysqladmin ping --silent
+            test-db-name: laravel
+            test-db-user: root
+            test-db-password: ''
+          - name: postgres
+            version: '17'
+            driver: pgsql
+            service-port: 5432
+            image: postgres:17
+            env:
+              POSTGRES_USER: root
+              POSTGRES_PASSWORD: password
+              POSTGRES_DB: laravel
+            health-cmd: pg_isready -U root
+            test-db-name: laravel
+            test-db-user: root
+            test-db-password: password
+          - name: postgres
+            version: '18'
+            driver: pgsql
+            service-port: 5432
+            image: postgres:18
+            env:
+              POSTGRES_USER: root
+              POSTGRES_PASSWORD: password
+              POSTGRES_DB: laravel
+            health-cmd: pg_isready -U root
+            test-db-name: laravel
+            test-db-user: root
+            test-db-password: password
 
     services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_DATABASE: laravel
+      db:
+        image: ${{ matrix.db.image }}
+        env: ${{ matrix.db.env }}
         ports:
-          - 3306:3306
+          - ${{ matrix.db.service-port }}:${{ matrix.db.service-port }}
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="${{ matrix.db.health-cmd }}"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
       redis:
         image: redis:7-alpine
         ports:
@@ -60,7 +124,7 @@ jobs:
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: redis
+          extensions: redis, pdo, pdo_mysql, pdo_pgsql, pdo_sqlite
           tools: composer:v2
 
       - name: Cache Composer downloads
@@ -83,11 +147,16 @@ jobs:
       - name: Prepare application directories
         run: chmod -R 777 storage bootstrap/cache
 
-      - name: Run migrations
-        run: php artisan migrate
-
       - name: Run PHP tests
         run: php artisan test
+        env:
+          # Route PHPUnit's dedicated `testing` connection to this matrix cell.
+          TEST_DB_CONNECTION: ${{ matrix.db.driver }}
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: ${{ matrix.db.service-port }}
+          TEST_DB_DATABASE: ${{ matrix.db.test-db-name }}
+          TEST_DB_USERNAME: ${{ matrix.db.test-db-user }}
+          TEST_DB_PASSWORD: ${{ matrix.db.test-db-password }}
 
   browser-tests:
     name: Browser tests (Node ${{ matrix.node-version }})

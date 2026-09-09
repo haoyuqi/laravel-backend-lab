@@ -28,4 +28,5 @@ plan/
 docs/
 .sisyphus/
 .agent-plans/
+.omo/
 

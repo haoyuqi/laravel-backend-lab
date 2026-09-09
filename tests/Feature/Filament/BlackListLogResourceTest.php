@@ -7,14 +7,11 @@ use App\Filament\Resources\BlackListLogResource\Pages\ListBlackListLogs;
 use App\Models\BlackList;
 use App\Models\BlackListLog;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class BlackListLogResourceTest extends TestCase
 {
-    use DatabaseTransactions;
-
     protected User $admin;
 
     protected function setUp(): void

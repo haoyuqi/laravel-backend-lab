@@ -7,14 +7,11 @@ use App\Filament\Resources\VisitorLogResource\Pages\ListVisitorLogs;
 use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorLog;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class VisitorLogResourceTest extends TestCase
 {
-    use DatabaseTransactions;
-
     protected User $admin;
 
     protected function setUp(): void
