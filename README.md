@@ -46,6 +46,37 @@
 | [Laravel GeoIP](https://github.com/Torann/laravel-geoip) | 根据 IP 获取地址 | |
 | [Laravel Backup](https://github.com/spatie/laravel-backup) | 备份工具 | |
 
+## Running Tests
+
+The test suite runs against a dedicated `testing` database connection so it
+**never touches your primary development database**.
+
+```bash
+php artisan test
+```
+
+Out of the box this uses an in-memory SQLite database — a fresh checkout runs
+with zero database provisioning and no database server required.
+
+To run the suite against a real database (same driver/version as your local
+development), override the dedicated connection:
+
+```bash
+# PostgreSQL (e.g. Laradock: user must have CREATEDB, or use the postgres superuser)
+TEST_DB_CONNECTION=pgsql TEST_DB_HOST=postgres TEST_DB_PORT=5432 \
+TEST_DB_DATABASE=web_test TEST_DB_USERNAME=postgres TEST_DB_PASSWORD=postgres \
+php artisan test
+
+# MySQL
+TEST_DB_CONNECTION=mysql TEST_DB_HOST=mysql TEST_DB_PORT=3306 \
+TEST_DB_DATABASE=laravel_test TEST_DB_USERNAME=root TEST_DB_PASSWORD=root \
+php artisan test
+```
+
+The named test database is auto-created when missing (SQLite needs no setup).
+CI runs the same suite against MySQL 8.0 / 8.4 and PostgreSQL via GitHub
+Actions service containers.
+
 ## Project supported by JetBrains
 
 Thanks to JetBrains for supporting me.

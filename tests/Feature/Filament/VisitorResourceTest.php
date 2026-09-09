@@ -9,14 +9,11 @@ use App\Models\BlackList;
 use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorLog;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class VisitorResourceTest extends TestCase
 {
-    use DatabaseTransactions;
-
     protected User $admin;
 
     protected function setUp(): void

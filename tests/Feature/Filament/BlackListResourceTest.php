@@ -11,14 +11,11 @@ use App\Models\BlackList;
 use App\Models\BlackListLog;
 use App\Models\User;
 use App\Models\Visitor;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class BlackListResourceTest extends TestCase
 {
-    use DatabaseTransactions;
-
     protected User $admin;
 
     protected function setUp(): void

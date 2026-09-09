@@ -9,16 +9,14 @@ use App\Models\BlackList;
 use App\Models\User;
 use App\Models\Visitor;
 use Exception;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class StatsOverviewWidgetTest extends TestCase
 {
-    use DatabaseTransactions;
-
     protected User $admin;
 
     protected function setUp(): void
@@ -149,7 +147,10 @@ class StatsOverviewWidgetTest extends TestCase
 
     public function test_health_status_widget_renders_successfully(): void
     {
-        $driver = (string) config('database.default', 'pgsql');
+        // Match the effective PDO driver (what HealthStatusWidget reports),
+        // not the connection name — under the test suite this is the
+        // `testing` connection whose driver may be sqlite/mysql/pgsql.
+        $driver = (string) DB::connection()->getDriverName();
         $expectedDb = match ($driver) {
             'pgsql' => 'PostgreSQL',
             'mysql' => 'MySQL',
