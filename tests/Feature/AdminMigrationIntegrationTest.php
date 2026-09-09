@@ -131,7 +131,7 @@ class AdminMigrationIntegrationTest extends TestCase
             ])
             ->call('authenticate')
             ->assertHasNoFormErrors()
-            ->assertRedirect('/filament');
+            ->assertRedirect('/admin');
 
         $this->assertAuthenticatedAs($user);
 

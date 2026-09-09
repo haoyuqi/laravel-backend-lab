@@ -47,9 +47,9 @@ class StatsOverviewWidgetTest extends TestCase
 
     public function test_unauthenticated_user_cannot_access_dashboard(): void
     {
-        $response = $this->get('/filament');
+        $response = $this->get('/admin');
 
-        $response->assertRedirect('/filament/login');
+        $response->assertRedirect('/admin/login');
     }
 
     public function test_stats_overview_widget_renders_successfully_for_admin(): void
@@ -134,7 +134,7 @@ class StatsOverviewWidgetTest extends TestCase
 
     public function test_filament_dashboard_homepage_includes_stats_overview_widget(): void
     {
-        $response = $this->actingAs($this->admin)->get('/filament');
+        $response = $this->actingAs($this->admin)->get('/admin');
 
         $response->assertSuccessful();
         $response->assertSeeLivewire(StatsOverview::class);
@@ -142,7 +142,7 @@ class StatsOverviewWidgetTest extends TestCase
         $response->assertSeeLivewire(HealthStatusWidget::class);
         $response->assertSee('Laravel Backend Lab');
         $response->assertSee('GitHub 源码');
-        $response->assertSee('v2.0.0');
+        $response->assertSee('v2.1.0');
     }
 
     public function test_health_status_widget_renders_successfully(): void

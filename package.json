@@ -2,11 +2,14 @@
     "private": true,
     "scripts": {
         "dev": "npm run development",
+        "predevelopment": "npm run patch:laravel-mix",
         "development": "mix",
         "watch": "mix watch",
         "watch-poll": "mix watch -- --watch-options-poll=1000",
         "hot": "mix watch --hot",
         "prod": "npm run production",
+        "preproduction": "npm run patch:laravel-mix",
+        "patch:laravel-mix": "node scripts/patch-laravel-mix.js",
         "production": "mix --production"
     },
     "devDependencies": {

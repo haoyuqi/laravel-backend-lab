@@ -3,7 +3,7 @@
 
 <p align="center">
     <a href="https://github.com/haoyuqi/laravel-backend-lab/actions"><img alt="Build Status" src="https://github.com/haoyuqi/laravel-backend-lab/workflows/CI/badge.svg"></a>
-    <a href="https://laravel.com/"><img alt="Laravel" src="https://img.shields.io/badge/Laravel-v12.x-%23fc2d1f"></a>
+    <a href="https://laravel.com/"><img alt="Laravel" src="https://img.shields.io/badge/Laravel-v13.x-%23fc2d1f"></a>
     <a href="https://github.com/haoyuqi/laravel-backend-lab/blob/master/LICENSE"><img alt="GitHub license" src="https://img.shields.io/github/license/haoyuqi/laravel-backend-lab"></a>
 </p>
 
