@@ -109,4 +109,14 @@ class FilamentPanelTest extends TestCase
 
         $this->actingAs($user)->get('/filament')->assertSuccessful();
     }
+
+    public function test_user_can_access_panel_with_case_insensitive_whitelisted_email_in_production(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+        config(['app.admin_emails' => ['allowed@example.com']]);
+
+        $mixedCaseUser = User::factory()->create(['email' => 'Allowed@EXAMPLE.COM']);
+
+        $this->actingAs($mixedCaseUser)->get('/filament')->assertSuccessful();
+    }
 }

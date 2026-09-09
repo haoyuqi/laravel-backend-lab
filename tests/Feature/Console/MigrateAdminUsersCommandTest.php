@@ -33,6 +33,8 @@ class MigrateAdminUsersCommandTest extends TestCase
             'migrated@example.com',
             'valid@example.com',
             'duplicate@example.com',
+            'fresh@example.com',
+            'tx@example.com',
         ])->delete();
     }
 
@@ -202,5 +204,140 @@ class MigrateAdminUsersCommandTest extends TestCase
         $updated = DB::table('users')->where('email', 'duplicate@example.com')->first();
         $this->assertSame('New Name', $updated->name);
         $this->assertTrue(Hash::check('new_pass', $updated->password));
+    }
+
+    public function test_command_warns_and_retries_on_empty_or_whitespace_input(): void
+    {
+        DB::table('admin_users')->insert([
+            'username' => 'whitespace_user',
+            'password' => Hash::make('password'),
+            'name' => 'Whitespace User',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('admin:migrate-users')
+            ->expectsQuestion("Enter a valid email for 'whitespace_user', [s] to skip, or [d] to discard/delete", '   ')
+            ->expectsOutput('Input cannot be empty. Please enter an email, "s" to skip, or "d" to discard.')
+            ->expectsQuestion("Enter a valid email for 'whitespace_user', [s] to skip, or [d] to discard/delete", 'valid@example.com')
+            ->expectsOutput("Successfully migrated 'whitespace_user' to <valid@example.com>.")
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('users', ['email' => 'valid@example.com']);
+    }
+
+    public function test_command_cancels_discard_when_confirmation_declined(): void
+    {
+        DB::table('admin_users')->insert([
+            'username' => 'cancel_discard_user',
+            'password' => Hash::make('password'),
+            'name' => 'Cancel Discard User',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('admin:migrate-users')
+            ->expectsQuestion("Enter a valid email for 'cancel_discard_user', [s] to skip, or [d] to discard/delete", 'd')
+            ->expectsConfirmation("Are you sure you want to permanently discard legacy account 'cancel_discard_user'?", 'no')
+            ->expectsQuestion("Enter a valid email for 'cancel_discard_user', [s] to skip, or [d] to discard/delete", 's')
+            ->expectsOutput("Skipped account 'cancel_discard_user'.")
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('admin_users', ['username' => 'cancel_discard_user']);
+    }
+
+    public function test_command_handles_duplicate_email_skip_choice(): void
+    {
+        DB::table('users')->insert([
+            'name' => 'Existing User',
+            'email' => 'duplicate@example.com',
+            'password' => Hash::make('existing_pass'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('admin_users')->insert([
+            'username' => 'skip_dup_user',
+            'password' => Hash::make('new_pass'),
+            'name' => 'Skip Dup User',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('admin:migrate-users')
+            ->expectsQuestion("Enter a valid email for 'skip_dup_user', [s] to skip, or [d] to discard/delete", 'duplicate@example.com')
+            ->expectsChoice(
+                "A user with email 'duplicate@example.com' already exists (Name: Existing User). What would you like to do?",
+                'Skip this account',
+                ['Overwrite existing user', 'Skip this account', 'Enter another email']
+            )
+            ->expectsOutput("Skipped account 'skip_dup_user'.")
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('admin_users', ['username' => 'skip_dup_user']);
+        $existing = DB::table('users')->where('email', 'duplicate@example.com')->first();
+        $this->assertSame('Existing User', $existing->name);
+    }
+
+    public function test_command_handles_duplicate_email_retry_choice(): void
+    {
+        DB::table('users')->insert([
+            'name' => 'Existing User',
+            'email' => 'duplicate@example.com',
+            'password' => Hash::make('existing_pass'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('admin_users')->insert([
+            'username' => 'retry_dup_user',
+            'password' => Hash::make('new_pass'),
+            'name' => 'Retry Dup User',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('admin:migrate-users')
+            ->expectsQuestion("Enter a valid email for 'retry_dup_user', [s] to skip, or [d] to discard/delete", 'duplicate@example.com')
+            ->expectsChoice(
+                "A user with email 'duplicate@example.com' already exists (Name: Existing User). What would you like to do?",
+                'Enter another email',
+                ['Overwrite existing user', 'Skip this account', 'Enter another email']
+            )
+            ->expectsQuestion("Enter a valid email for 'retry_dup_user', [s] to skip, or [d] to discard/delete", 'fresh@example.com')
+            ->expectsOutput("Successfully migrated 'retry_dup_user' to <fresh@example.com>.")
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('users', ['email' => 'fresh@example.com', 'name' => 'Retry Dup User']);
+        $this->assertDatabaseMissing('admin_users', ['username' => 'retry_dup_user']);
+    }
+
+    public function test_command_rolls_back_transaction_on_failure(): void
+    {
+        DB::table('admin_users')->insert([
+            'username' => 'tx_fail_user',
+            'password' => Hash::make('password'),
+            'name' => 'Tx Fail User',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::listen(function ($query) {
+            if (str_contains(strtolower($query->sql), 'admin_users') && str_contains(strtolower($query->sql), 'delete')) {
+                throw new \RuntimeException('Simulated delete failure during migration transaction');
+            }
+        });
+
+        try {
+            $this->artisan('admin:migrate-users')
+                ->expectsQuestion("Enter a valid email for 'tx_fail_user', [s] to skip, or [d] to discard/delete", 'tx@example.com');
+            $this->fail('Expected exception was not thrown');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Simulated delete failure during migration transaction', $e->getMessage());
+        }
+
+        // Both tables must roll back: admin_users retains the user, and users does not persist the user
+        $this->assertDatabaseHas('admin_users', ['username' => 'tx_fail_user']);
+        $this->assertDatabaseMissing('users', ['email' => 'tx@example.com']);
     }
 }
