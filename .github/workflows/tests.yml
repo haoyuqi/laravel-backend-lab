@@ -29,6 +29,7 @@ jobs:
         db:
           - name: mysql
             version: '8.0'
+            driver: mysql
             service-port: 3306
             image: mysql:8.0
             env:
@@ -40,6 +41,7 @@ jobs:
             test-db-password: ''
           - name: mysql
             version: '8.4'
+            driver: mysql
             service-port: 3306
             image: mysql:8.4
             env:
@@ -51,6 +53,7 @@ jobs:
             test-db-password: ''
           - name: postgres
             version: '18'
+            driver: pgsql
             service-port: 5432
             image: postgres:18
             env:
@@ -120,7 +123,7 @@ jobs:
         run: php artisan test
         env:
           # Route PHPUnit's dedicated `testing` connection to this matrix cell.
-          TEST_DB_CONNECTION: ${{ matrix.db.name }}
+          TEST_DB_CONNECTION: ${{ matrix.db.driver }}
           TEST_DB_HOST: 127.0.0.1
           TEST_DB_PORT: ${{ matrix.db.service-port }}
           TEST_DB_DATABASE: ${{ matrix.db.test-db-name }}
