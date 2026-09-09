@@ -78,4 +78,45 @@ class FilamentPanelTest extends TestCase
         $response->assertRedirect('/filament/login');
         $this->assertGuest();
     }
+
+    public function test_user_cannot_access_panel_in_production_if_not_in_admin_emails(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+        config(['app.admin_emails' => ['allowed@example.com']]);
+
+        $allowedUser = User::factory()->create(['email' => 'allowed@example.com']);
+        $deniedUser = User::factory()->create(['email' => 'denied@example.com']);
+
+        $this->actingAs($deniedUser)->get('/filament')->assertForbidden();
+        $this->actingAs($allowedUser)->get('/filament')->assertSuccessful();
+    }
+
+    public function test_user_cannot_access_panel_in_production_if_admin_emails_is_empty(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+        config(['app.admin_emails' => []]);
+
+        $user = User::factory()->create(['email' => 'any@example.com']);
+
+        $this->actingAs($user)->get('/filament')->assertForbidden();
+    }
+
+    public function test_user_can_access_panel_in_non_production_when_admin_emails_is_empty(): void
+    {
+        config(['app.admin_emails' => []]);
+
+        $user = User::factory()->create(['email' => 'random@example.com']);
+
+        $this->actingAs($user)->get('/filament')->assertSuccessful();
+    }
+
+    public function test_user_can_access_panel_with_case_insensitive_whitelisted_email_in_production(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+        config(['app.admin_emails' => ['allowed@example.com']]);
+
+        $mixedCaseUser = User::factory()->create(['email' => 'Allowed@EXAMPLE.COM']);
+
+        $this->actingAs($mixedCaseUser)->get('/filament')->assertSuccessful();
+    }
 }

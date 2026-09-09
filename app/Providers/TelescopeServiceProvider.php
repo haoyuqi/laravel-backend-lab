@@ -63,9 +63,9 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     protected function gate()
     {
         Gate::define('viewTelescope', function ($user = null) {
-            $allowedEmails = array_filter(explode(',', (string) env('ADMIN_EMAILS', '')));
+            $allowedEmails = config('app.admin_emails', []);
 
-            return $user && in_array($user->email, $allowedEmails);
+            return $user && in_array(strtolower($user->email), $allowedEmails, true);
         });
     }
 }
