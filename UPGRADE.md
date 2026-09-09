@@ -49,7 +49,7 @@ git fetch origin
 git checkout 2.x # or target release tag v2.1.0
 
 composer install --no-dev --optimize-autoloader
-npm ci && npm run build
+npm ci && npm run prod
 ```
 
 ### Step 2: Migrate Administrator Accounts
@@ -122,11 +122,11 @@ php artisan up
 
 ## 4. Post-Upgrade Verification Checklist
 
-- [ ] Navigate to the panel login page.
+- [ ] Navigate to the panel login page (`/admin/login`).
 - [ ] Log in with a migrated administrator's email and their original password.
 - [ ] Confirm access to the dashboard, PV/UV metrics, and system health status.
-- [ ] Confirm visitor records (`/visitors`) and logs (`/visitor-logs`).
-- [ ] Confirm blacklist records (`/black-lists`) and logs (`/black-list-logs`).
+- [ ] Confirm visitor records (`/admin/visitors`) and logs (`/admin/visitor-logs`).
+- [ ] Confirm blacklist records (`/admin/black-lists`) and logs (`/admin/black-list-logs`).
 - [ ] Verify Horizon dashboard (`/horizon`) and Telescope (`/telescope`) access.
 
 ---
