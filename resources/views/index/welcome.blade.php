@@ -19,5 +19,4 @@
     <div id="app">
         <show-info-component info="{{ $info }}"></show-info-component>
     </div>
-    <script src="{{ asset('js/app.js') }}"></script>
 @endsection

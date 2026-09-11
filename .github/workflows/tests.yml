@@ -229,7 +229,7 @@ jobs:
         run: npm ci --quiet
 
       - name: Build frontend assets
-        run: npm run dev
+        run: npm run build
 
       - name: Generate application key
         run: php artisan key:generate
