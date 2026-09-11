@@ -14,7 +14,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr v-for="(item, key) in time_list">
+                    <tr v-for="(item, key) in time_list" :key="key">
                         <th scope="row">{{ key + 1 }}</th>
                         <td>{{ item }}</td>
                     </tr>
@@ -29,16 +29,18 @@
 export default {
     data() {
         return {
-            time_list: JSON.parse(this.init_data)
+            time_list: typeof this.init_data === 'string' ? JSON.parse(this.init_data) : (this.init_data || [])
         }
     },
     props: ['init_data'],
     mounted() {
-        Echo.channel(process.env.MIX_REDIS_PREFIX + 'push-time')
-            .listen('PushTimeEvent', (e) => {
-                this.time_list.push(e.time)
-            })
+        if (window.Echo) {
+            const prefix = import.meta.env.VITE_REDIS_PREFIX || '';
+            window.Echo.channel(prefix + 'push-time')
+                .listen('PushTimeEvent', (e) => {
+                    this.time_list.push(e.time);
+                });
+        }
     }
 }
 </script>
-
