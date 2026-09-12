@@ -22,7 +22,7 @@
 Laravel Backend Lab is a reference application and learning environment built
 around a production-style Laravel backend. It brings together an administrative
 panel, visitor analytics, queues, scheduled maintenance, backups, and
-observability in one codebase that can be developed consistently with Laradock.
+observability in one codebase.
 
 This repository is an application, not a reusable Laravel package or a generic
 project starter.
@@ -33,7 +33,8 @@ project starter.
 - Dashboard widgets for traffic statistics, application metadata, and service
   health.
 - Visitor recording, IP geolocation, and blacklist enforcement.
-- Redis-backed queues and monitoring through Laravel Horizon.
+- Configurable queue processing with optional Redis monitoring through Laravel
+  Horizon.
 - Application inspection through Laravel Telescope and Debugbar.
 - Scheduled backups, retention cleanup, visit aggregation, and Bing wallpaper
   downloads.
@@ -60,79 +61,101 @@ The application health endpoint is available at `/up`.
 
 ## Requirements
 
-The supported development environment is a
-[Laradock](https://github.com/laradock/laradock) installation with:
+The application requires:
 
-- the `workspace`, `php-fpm`, and `nginx` containers;
-- PHP 8.3 and Composer 2 in `workspace`;
-- Node.js 20 and npm in `workspace`;
-- MySQL and Redis services.
+- PHP 8.3 or later, with the extensions required by `composer.lock`;
+- Composer 2;
+- Node.js 20 and npm;
+- SQLite, MySQL, or PostgreSQL for persistent application data;
+- Redis for visitor statistics, blacklist caching, and related scheduled jobs;
+- a web server supported by Laravel in production.
 
-The examples below assume the repositories are located at:
+Laravel-managed cache, sessions, queues, and broadcasting do not have to use
+Redis. However, Redis itself is required by the current application because
+visitor counting, blacklist checks, dashboard statistics, and maintenance
+commands access it directly. Making Redis entirely optional requires an
+application code change; changing only `.env` is not sufficient.
 
-```text
-~/Developer/laradock
-~/Developer/www/laravel-backend-lab
-```
+## Services and Configuration
 
-Laradock mounts `~/Developer/www` at `/var/www`, so the project is available
-inside `workspace` as `/var/www/laravel-backend-lab`.
+| Service | Required | Configuration and alternatives |
+| --- | --- | --- |
+| Database | Yes | Set `DB_CONNECTION` and the matching `DB_*` values. SQLite, MySQL, and PostgreSQL are supported. |
+| Redis | Yes | Used directly by visitor statistics, blacklist checks, dashboard widgets, and scheduled cleanup. The host, port, credentials, client, and database indexes are configurable through `REDIS_*`. |
+| Queue worker | No | Required only with an asynchronous queue connection. The `sync` driver handles jobs in the request process. |
+| Horizon | No | Requires both Redis and a Redis queue connection. It is not needed with `sync` or a non-Redis queue. |
+| Scheduler | Feature-dependent | Run `php artisan schedule:run` every minute to enable scheduled backups, cleanup, statistics, and maintenance tasks. |
+| Mail server | No | Use `MAIL_MAILER=log` during development, or configure SMTP for outgoing mail. |
+| Object storage | No | The default local filesystem works without S3. Configure `FILESYSTEM_DRIVER`, `FILESYSTEM_CLOUD`, and `AWS_*` only when external storage is needed. |
+| Real-time server | No | Keep `BROADCAST_CONNECTION=log` when real-time events are disabled. The included Echo integration needs Redis broadcasting, a compatible Socket.IO server, and the matching `VITE_REDIS_PREFIX`. |
+| Telescope and Debugbar | No | Set `TELESCOPE_ENABLED=false` and `DEBUGBAR_ENABLED=false` when these inspection tools should not collect data or expose their interfaces. |
+
+Important environment options include:
+
+- `APP_URL` for the public application URL;
+- `ADMIN_EMAILS` for the comma-separated production administrator allowlist;
+- `DB_*` for the selected database;
+- `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PASSWORD`, and `REDIS_PORT` for Redis;
+- `CACHE_STORE`, `SESSION_DRIVER`, and `QUEUE_CONNECTION` for state and job
+  storage;
+- `BROADCAST_CONNECTION` and `VITE_REDIS_PREFIX` for real-time events;
+- `MAIL_MAILER` and `MAIL_*` for outgoing mail;
+- `FILESYSTEM_DRIVER`, `FILESYSTEM_CLOUD`, and `AWS_*` for file storage;
+- `TELESCOPE_ENABLED` and `DEBUGBAR_ENABLED` for optional inspection tools;
+- `TEST_DB_*` for an isolated non-default test database.
 
 ## Installation
 
-Clone the application on the host:
+Clone the application and install its locked dependencies:
 
 ```bash
-cd ~/Developer/www
 git clone git@github.com:haoyuqi/laravel-backend-lab.git
 cd laravel-backend-lab
 cp .env.example .env
+composer install --prefer-dist --no-interaction
+npm ci
+npm run build
 ```
 
-Start the required Laradock services:
-
-```bash
-cd ~/Developer/laradock
-docker compose up -d nginx mysql redis workspace
-```
-
-Install the PHP and JavaScript dependencies from the `workspace` container:
-
-```bash
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab workspace composer install --prefer-dist --no-interaction
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab workspace npm ci
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab workspace npm run build
-```
-
-Update `.env` for the Laradock network before running migrations. At minimum,
-review these values:
+Choose a database and update `.env` before running migrations. For example,
+MySQL can be configured with:
 
 ```dotenv
-APP_URL=http://laravel-backend-lab.test
+APP_URL=http://localhost
 
 DB_CONNECTION=mysql
-DB_HOST=mysql
+DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=laravel
 DB_USERNAME=root
-DB_PASSWORD=root
-
-REDIS_HOST=redis
+DB_PASSWORD=
 ```
 
-The database name and credentials must match your Laradock configuration.
-Complete the application setup in `workspace`:
+Redis does not need to store Laravel's cache, sessions, queues, or broadcasts.
+To use it only for the application features that currently require it, set:
+
+```dotenv
+CACHE_STORE=file
+SESSION_DRIVER=file
+QUEUE_CONNECTION=sync
+BROADCAST_CONNECTION=log
+```
+
+These settings reduce Redis usage but do not eliminate the direct Redis calls
+made by visitor statistics and blacklist features.
+
+Complete the application setup:
 
 ```bash
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab workspace php artisan key:generate
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab workspace php artisan storage:link
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab workspace php artisan migrate
-docker compose exec -it -u laradock -w /var/www/laravel-backend-lab workspace php artisan make:filament-user
+php artisan key:generate
+php artisan storage:link
+php artisan migrate
+php artisan make:filament-user
 ```
 
-Add the local domain to Laradock's nginx sites and your hosts file, then open
-the application URL. Sign in to the admin panel at `/admin` with the Filament
-user created above.
+Configure the web server to use the project's `public` directory as its
+document root. For local evaluation, `php artisan serve` can start Laravel's
+development server. Sign in to `/admin` with the Filament user created above.
 
 In production, `ADMIN_EMAILS` must contain a comma-separated allowlist of
 administrator email addresses. An empty allowlist denies all panel access in
@@ -140,11 +163,10 @@ production.
 
 ## Development
 
-Run the Vite development server from `workspace`:
+Run the Vite development server:
 
 ```bash
-cd ~/Developer/laradock
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab workspace npm run dev
+npm run dev
 ```
 
 Create an optimized frontend build with `npm run build`. Do not use the removed
@@ -159,9 +181,8 @@ The default test suite uses a dedicated `testing` connection backed by an
 in-memory SQLite database. It does not use the primary development database.
 
 ```bash
-cd ~/Developer/laradock
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab workspace php artisan test
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab workspace ./vendor/bin/pint --test
+php artisan test
+./vendor/bin/pint --test
 ```
 
 To exercise the suite against MySQL or PostgreSQL, provide the dedicated
@@ -169,24 +190,22 @@ To exercise the suite against MySQL or PostgreSQL, provide the dedicated
 named test database if it does not already exist:
 
 ```bash
-docker compose exec -T -u laradock -w /var/www/laravel-backend-lab \
-  -e TEST_DB_CONNECTION=mysql \
-  -e TEST_DB_HOST=mysql \
-  -e TEST_DB_PORT=3306 \
-  -e TEST_DB_DATABASE=laravel_test \
-  -e TEST_DB_USERNAME=root \
-  -e TEST_DB_PASSWORD=root \
-  workspace php artisan test
+TEST_DB_CONNECTION=mysql \
+TEST_DB_HOST=127.0.0.1 \
+TEST_DB_PORT=3306 \
+TEST_DB_DATABASE=laravel_test \
+TEST_DB_USERNAME=root \
+TEST_DB_PASSWORD='' \
+php artisan test
 ```
 
 ## Operations
 
-Production deployments should run the Laravel scheduler every minute and keep
-the queue worker or Horizon under a process supervisor. The scheduler performs
-backups, cleanup, visit aggregation, Telescope pruning, GeoIP maintenance, and
-Bing wallpaper downloads. Configure the Laradock `php-worker`,
-`laravel-horizon`, and `laravel-echo-server` services when those features are
-enabled.
+Production deployments should run the Laravel scheduler every minute when its
+scheduled features are enabled. Keep queue workers under a process supervisor
+when using an asynchronous queue connection. Horizon is appropriate only for a
+Redis-backed queue. The scheduler performs backups, cleanup, visit aggregation,
+Telescope pruning, GeoIP maintenance, and Bing wallpaper downloads.
 
 ## Contributing
 
