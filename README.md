@@ -27,7 +27,7 @@ observability in one codebase.
 This repository is an application, not a reusable Laravel package or a generic
 project starter.
 
-> This project is developed with assistance from AI coding tools, including OpenAI Codex.
+> This project is developed with AI assistance and maintained under human review.
 
 ## Highlights
 
