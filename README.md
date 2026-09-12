@@ -27,9 +27,7 @@ observability in one codebase.
 This repository is an application, not a reusable Laravel package or a generic
 project starter.
 
-Development is assisted by AI coding tools. See
-[AI-Assisted Development](#ai-assisted-development) for the scope and review
-policy.
+> This project is developed with assistance from AI coding tools, including OpenAI Codex.
 
 ## Highlights
 
@@ -216,18 +214,6 @@ Telescope pruning, GeoIP maintenance, and Bing wallpaper downloads.
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull
 request. It defines the branch naming, commit message, testing, and target branch
 conventions used by this repository.
-
-## AI-Assisted Development
-
-This project is developed with assistance from AI coding tools, including
-OpenAI Codex. AI may support research, planning, implementation, test creation,
-documentation, debugging, and code review.
-
-The project maintainer reviews and validates accepted changes and remains
-responsible for their correctness, security, and maintenance. AI assistance is
-part of the development workflow only: running this application does not
-require an AI service, and the application does not send user or application
-data to an AI provider by default.
 
 ## License
 
