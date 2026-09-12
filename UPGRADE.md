@@ -1,4 +1,170 @@
-# Upgrade Guide: v2.0.0 to v2.1.0
+# Upgrade Guide
+
+## v2.1.0 to v2.2.0
+
+This release modernizes the frontend toolchain. It replaces Laravel Mix with
+Vite and upgrades Vue, Bootstrap, Axios, Laravel Echo, Socket.IO Client, and
+Sass. It does not add application database migrations.
+
+The source comparison is available at:
+https://github.com/haoyuqi/laravel-backend-lab/compare/v2.1.0...v2.2.0
+
+### Supported upgrade path
+
+- Upgrade from a completed v2.1.0 production deployment to v2.2.0.
+- If the application is still on v2.0.0, complete the v2.0.0 to v2.1.0
+  procedure below first. Do not skip its administrator and database migration.
+- Use Node.js 20 to install and build frontend dependencies.
+
+### Breaking changes
+
+| Area | v2.1.0 | v2.2.0 | Required action |
+| --- | --- | --- | --- |
+| Asset builder | Laravel Mix 6 | Vite 6 | Replace Mix commands and deployment artifacts. |
+| Production build | `npm run prod` | `npm run build` | Update deployment scripts and CI integrations. |
+| Development server | Mix/Webpack | Vite | Use `npm run dev`; expose the Vite port when developing in Docker. |
+| Manifest | `public/mix-manifest.json` | `public/build/manifest.json` | Deploy the complete `public/build` directory. |
+| Vue | 2.6 | 3.5 | Update private components and plugins to the Vue 3 application API. |
+| Bootstrap | 4.5 with jQuery | 5.3 without jQuery | Review markup, data attributes, utilities, and custom JavaScript. |
+| Axios | 0.33 | 1.7 | Review private interceptors and integrations for Axios 1 behavior. |
+| Laravel Echo | 1.8 | 2.5 | Re-test private real-time channel integrations. |
+| Socket.IO Client | 2.3 | 4.8 | Confirm compatibility with the deployed Socket.IO server. |
+| JavaScript modules | CommonJS | ES modules | Replace private `require()` calls with `import` statements. |
+| Realtime prefix | `MIX_REDIS_PREFIX` | `VITE_REDIS_PREFIX` | Rename the frontend environment variable. |
+
+The package lock changes substantially because the Webpack/Laravel Mix
+dependency tree is removed. Install dependencies from the lock file; do not
+manually preserve packages that are no longer declared in `package.json`.
+
+### Production upgrade procedure
+
+1. Rehearse the deployment in staging and verify all pages that load project
+   JavaScript or CSS, including the real-time clock and queue example.
+2. Preserve the current release artifact and environment configuration as the
+   rollback point. Although this release has no application database migration,
+   use the normal production backup policy before every deployment.
+3. Confirm that the v2.1.0 database migration was completed:
+
+   ~~~bash
+   php artisan migrate:status
+   ~~~
+
+   The `2026_09_07_000000_cleanup_legacy_admin_tables` migration must already
+   be marked as `Ran`. If it is pending, stop: the v2.1.0 production upgrade is
+   incomplete and its database procedure must be reviewed before continuing.
+4. Update the production environment before building assets because `VITE_*`
+   values are compiled into the frontend bundle:
+
+   ~~~dotenv
+   APP_VERSION=2.2.0
+   VITE_REDIS_PREFIX=
+   ~~~
+
+   If `MIX_REDIS_PREFIX` previously had a value, copy that value to
+   `VITE_REDIS_PREFIX`. Remove the old variable after the deployment is
+   verified.
+5. Deploy the immutable `v2.2.0` tag, preserve the existing `APP_KEY`, and
+   install locked dependencies:
+
+   ~~~bash
+   git fetch --tags origin
+   git checkout v2.2.0
+   composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+   npm ci
+   npm run build
+   ~~~
+
+6. Confirm that `public/build/manifest.json` exists in the release artifact.
+   Do not reuse `public/mix-manifest.json`, `public/css`, or `public/js` assets
+   from v2.1.0.
+7. Check for unexpected database changes:
+
+   ~~~bash
+   php artisan migrate:status
+   ~~~
+
+   v2.2.0 is expected to contain no pending application migrations. Stop and
+   investigate instead of running an unexpected migration in production.
+8. Clear and rebuild application caches, then restart long-running workers:
+
+   ~~~bash
+   php artisan optimize:clear
+   php artisan filament:optimize
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+   php artisan queue:restart
+   php artisan horizon:terminate
+   ~~~
+
+9. Bring the application online and verify:
+
+   - `/up` reports healthy.
+   - `/admin` loads without missing-manifest or asset errors.
+   - Public pages render Bootstrap styling correctly.
+   - Vue components mount and update successfully.
+   - The browser console and network panel contain no asset or JavaScript
+     errors.
+   - Real-time events work with the deployed Socket.IO server and Redis prefix.
+   - Queues, scheduled tasks, Horizon, and Telescope remain healthy.
+
+### Private frontend code
+
+Deployments with private frontend extensions must migrate them before upgrading:
+
+- Replace the global Vue 2 constructor with Vue 3 `createApp()` and register
+  components on the application instance.
+- Replace private code that relies on the removed `window.Vue`, `window.$`,
+  `window.jQuery`, or `window._` globals with explicit imports.
+- Replace CommonJS `require()` calls and `process.env.MIX_*` references with ES
+  module imports and `import.meta.env.VITE_*` variables.
+- Replace Bootstrap 4 `data-toggle` and `data-target` attributes with Bootstrap
+  5 `data-bs-toggle` and `data-bs-target`; remove dependencies on Bootstrap's
+  jQuery plugins.
+- Check renamed or removed Bootstrap utilities and any third-party Vue 2-only
+  components.
+- Update Blade templates from `mix()` or hard-coded `css/app.css` and
+  `js/app.js` paths to the `@vite` directive.
+
+### Rollback
+
+No application database schema is changed by v2.2.0, so rollback consists of
+restoring the v2.1.0 code and its matching frontend assets:
+
+~~~bash
+git checkout v2.1.0
+composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+npm ci
+npm run prod
+test -f public/mix-manifest.json
+test -f public/css/app.css
+test -f public/js/app.js
+php artisan optimize:clear
+php artisan queue:restart
+php artisan horizon:terminate
+~~~
+
+Restore the v2.1.0 `MIX_REDIS_PREFIX` setting and remove stale Vite assets if
+deployment tooling does not replace the release directory atomically. Do not
+roll back by mixing v2.1.0 code with a v2.2.0 `public/build` directory.
+
+### Release checklist
+
+- [ ] Staging deployment and frontend smoke tests completed.
+- [ ] Private Vue and Bootstrap integrations checked for compatibility.
+- [ ] Node.js 20 used for the locked frontend dependency installation.
+- [ ] v2.1.0 legacy administration cleanup migration already marked as run.
+- [ ] `APP_VERSION=2.2.0` configured.
+- [ ] `MIX_REDIS_PREFIX` migrated to `VITE_REDIS_PREFIX` when applicable.
+- [ ] `npm ci` and `npm run build` completed successfully.
+- [ ] `public/build/manifest.json` included in the deployment artifact.
+- [ ] Admin and public pages load without browser or asset errors.
+- [ ] Real-time events verified against the production Socket.IO server.
+- [ ] Rollback artifact and owner recorded.
+
+---
+
+## v2.0.0 to v2.1.0
 
 This guide covers the complete production upgrade from the v2.0.0 release
 (the previous master baseline) to v2.1.0 (the 2.x release line).
@@ -10,7 +176,7 @@ This guide covers the complete production upgrade from the v2.0.0 release
 The file-level source comparison is available at:
 https://github.com/haoyuqi/laravel-backend-lab/compare/v2.0.0...v2.1.0
 
-## Supported upgrade path
+### Supported upgrade path
 
 - Start from a working v2.0.0 deployment.
 - Upgrade directly to the released v2.1.0 tag in production.
@@ -21,7 +187,7 @@ https://github.com/haoyuqi/laravel-backend-lab/compare/v2.0.0...v2.1.0
 - A custom legacy admin table or separate legacy admin database is not supported
   by the automated command and requires a separate migration plan.
 
-## Breaking changes at a glance
+### Breaking changes at a glance
 
 | Area | v2.0.0 | v2.1.0 | Required action |
 | --- | --- | --- | --- |
@@ -39,9 +205,9 @@ https://github.com/haoyuqi/laravel-backend-lab/compare/v2.0.0...v2.1.0
 | Health check | Application-specific checks | **/up** | Point infrastructure health probes to the new endpoint. |
 | Test stack | PHPUnit 9 / Dusk 7 | PHPUnit 12 / Dusk 8 | Update custom tests and extensions. |
 
-## Complete change inventory
+### Complete change inventory
 
-### Runtime and framework
+#### Runtime and framework
 
 - PHP is upgraded from 8.0.2+ to 8.3+.
 - Laravel is upgraded from 9.x to 13.x.
@@ -51,7 +217,7 @@ https://github.com/haoyuqi/laravel-backend-lab/compare/v2.0.0...v2.1.0
 - Redis 7 is recommended for cache, sessions, and queues.
 - Laravel's health endpoint is available at **/up**.
 
-### Application structure
+#### Application structure
 
 The application now follows Laravel's streamlined bootstrap structure:
 
@@ -69,7 +235,7 @@ The application now follows Laravel's streamlined bootstrap structure:
   to the web middleware group. Recheck custom middleware ordering if the
   application has local extensions.
 
-### Administration and database behavior
+#### Administration and database behavior
 
 Laravel Admin, its log viewer, **app/Admin**, and **config/admin.php** are
 removed. Filament 3 provides the replacement administration panel at
@@ -124,7 +290,7 @@ schema migration removes these tables:
 The cleanup migration intentionally has no automatic down migration. A full
 database backup is the only supported way to recover this data.
 
-### Packages
+#### Packages
 
 The following application packages are removed:
 
@@ -150,7 +316,7 @@ Notable replacements and upgrades include:
 If the project has private extensions that import a removed package or an old
 framework class, update those extensions before production deployment.
 
-### Routes and user-facing behavior
+#### Routes and user-facing behavior
 
 - Filament administration is served from **/admin**.
 - The temporary **/filament** path is no longer available.
@@ -162,7 +328,7 @@ framework class, update those extensions before production deployment.
 - Horizon remains available at **/horizon** and Telescope at **/telescope**,
   subject to their authorization gates.
 
-### Localization
+#### Localization
 
 - Language files move from **resources/lang** to the root **lang** directory.
 - Chinese translations are updated through **laravel-lang/common**.
@@ -171,7 +337,7 @@ framework class, update those extensions before production deployment.
 - Move any deployment-specific translation overrides to the new directory and
   compare them against the new vendor translations.
 
-### Operational and data-compatibility changes
+#### Operational and data-compatibility changes
 
 - The Fruitcake CORS package is removed in favor of Laravel's built-in CORS
   middleware. Re-test any deployment-specific CORS policy.
@@ -190,7 +356,7 @@ framework class, update those extensions before production deployment.
   **TEST_DB_*** overrides. This prevents normal test runs from using the primary
   application database.
 
-### Environment and configuration
+#### Environment and configuration
 
 Preserve the existing **APP_KEY**. Regenerating it will invalidate encrypted
 application data, sessions, and cookies.
@@ -227,7 +393,7 @@ In production, an empty **ADMIN_EMAILS** value denies access to the Filament,
 Horizon, and Telescope administration surfaces. Email comparison is
 case-insensitive.
 
-### Build, CI, and tests
+#### Build, CI, and tests
 
 - Code style is checked with Laravel Pint.
 - Application tests run against SQLite, MySQL, and PostgreSQL.
@@ -236,9 +402,9 @@ case-insensitive.
   compatibility adjustment required by the current webpack dependency graph.
 - The production asset command is **npm run prod**, not **npm run build**.
 
-## Production upgrade procedure
+### Production upgrade procedure
 
-### 1. Rehearse with a production database snapshot
+#### 1. Rehearse with a production database snapshot
 
 Restore a recent production snapshot in an isolated staging environment and run
 this entire procedure there first. Verify representative visitor, blacklist,
@@ -255,7 +421,7 @@ Decide which legacy administrators must be retained and collect a unique email
 address for each one. Decide whether legacy roles, menu definitions, and
 operation logs must be exported for audit or archival purposes.
 
-### 2. Back up the current release and database
+#### 2. Back up the current release and database
 
 Create and verify both a deployment/code rollback point and a full database
 backup before entering the irreversible part of the upgrade.
@@ -282,7 +448,7 @@ or validated using the database platform's restore tooling.
 Also retain a secure copy of the current production environment configuration.
 Do not commit or paste that file into an issue, pull request, or deployment log.
 
-### 3. Enable maintenance mode
+#### 3. Enable maintenance mode
 
 ~~~bash
 php artisan down --retry=60
@@ -291,7 +457,7 @@ php artisan down --retry=60
 Stop or drain queue workers and prevent the scheduler from starting new work
 during the database migration window.
 
-### 4. Deploy the v2.1.0 release tag
+#### 4. Deploy the v2.1.0 release tag
 
 Deploy the immutable release tag rather than the moving **2.x** branch:
 
@@ -303,7 +469,7 @@ git checkout v2.1.0
 The **2.x** branch may be used in staging before the release tag is created, but
 production should use the final tag.
 
-### 5. Update production environment configuration
+#### 5. Update production environment configuration
 
 At minimum, add or review:
 
@@ -321,7 +487,7 @@ SESSION_SECURE_COOKIE=true
 Use values appropriate for the deployment. Do not copy the sample administrator
 email. Preserve **APP_KEY** and all production credentials.
 
-### 6. Install application dependencies and build assets
+#### 6. Install application dependencies and build assets
 
 ~~~bash
 composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
@@ -333,7 +499,7 @@ php artisan optimize:clear
 Confirm that Composer scripts and the production webpack build finish
 successfully before modifying the database.
 
-### 7. Migrate legacy administrator accounts
+#### 7. Migrate legacy administrator accounts
 
 Run the interactive migration in a real terminal:
 
@@ -361,7 +527,7 @@ SELECT COUNT(*) AS remaining_legacy_admin_users FROM admin_users;
 The expected value is zero. Do not run the schema migrations while retained
 accounts remain in this table.
 
-### 8. Run database migrations
+#### 8. Run database migrations
 
 ~~~bash
 php artisan migrate --force
@@ -371,7 +537,7 @@ This is the irreversible point that removes the legacy administration tables.
 If the migration refuses to drop them, stop and resolve the remaining
 **admin_users** rows; do not bypass the guard manually.
 
-### 9. Rebuild caches and restart workers
+#### 9. Rebuild caches and restart workers
 
 ~~~bash
 php artisan filament:optimize
@@ -384,13 +550,13 @@ php artisan horizon:terminate
 
 Restart the deployment's process manager so workers return on v2.1.0 code.
 
-### 10. Bring the application online
+#### 10. Bring the application online
 
 ~~~bash
 php artisan up
 ~~~
 
-## Post-upgrade verification
+### Post-upgrade verification
 
 Verify all of the following before considering the upgrade complete:
 
@@ -411,9 +577,9 @@ Verify all of the following before considering the upgrade complete:
 Keep the database backup until the release has completed its production
 observation period.
 
-## Rollback procedure
+### Rollback procedure
 
-### Before running admin:migrate-users
+#### Before running admin:migrate-users
 
 A code rollback is sufficient if no database-changing command has run:
 
@@ -426,7 +592,7 @@ php artisan optimize:clear
 php artisan up
 ~~~
 
-### After admin:migrate-users starts
+#### After admin:migrate-users starts
 
 The command deletes migrated or discarded rows from **admin_users**. A code-only
 rollback is no longer sufficient, even if **php artisan migrate --force** has
@@ -443,7 +609,7 @@ Do not rely on **php artisan migrate:rollback** for this release. The legacy
 administration cleanup intentionally cannot reconstruct deleted accounts,
 roles, permissions, menus, or operation logs.
 
-## Release checklist
+### Release checklist
 
 - [ ] Staging rehearsal completed with a recent production snapshot.
 - [ ] PHP, Node.js, database, and Redis versions meet the requirements.
