@@ -8,13 +8,12 @@
 
         <title>laravel example</title>
 
-        <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+        @vite(['resources/sass/app.scss', 'resources/js/app.js'])
 
     </head>
     <body>
         <div id="app">
-            <show-info info="{{ $info }}"></show-info>
+            <show-info-component info="{{ $info }}"></show-info-component>
         </div>
-    <script src="{{ asset('js/app.js') }}"></script>
     </body>
 </html>

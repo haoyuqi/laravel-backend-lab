@@ -15,9 +15,9 @@ yarn-error.log
 /Envoy.blade.php
 /_ide_helper.php
 /.phpstorm.meta.php
+/public/build
 /public/css/
 /public/js/
-/public/mix-manifest.json
 .env.dusk.local
 /storage/bing-wallpaper/
 /storage/backup/
