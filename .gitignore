@@ -28,7 +28,6 @@ docs/
 .sisyphus/
 .agent-plans/
 .omo/
-*-requirements.md
 
 # Playwright artifacts
 test-results/
