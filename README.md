@@ -42,7 +42,7 @@ project starter.
   downloads.
 - Vite-powered Vue 3 and Bootstrap 5 frontend assets.
 - PHPUnit feature and unit tests with an isolated testing connection, plus
-  browser coverage with Laravel Dusk.
+  end-to-end browser coverage with Playwright.
 
 The application health endpoint is available at `/up`.
 
@@ -199,6 +199,15 @@ TEST_DB_DATABASE=laravel_test \
 TEST_DB_USERNAME=root \
 TEST_DB_PASSWORD='' \
 php artisan test
+```
+
+To run the Playwright end-to-end browser tests across desktop and mobile
+browsers against an isolated test database:
+
+```bash
+php artisan migrate --database=testing
+php artisan db:seed --class=E2EDataSeeder --database=testing
+npm run test:e2e
 ```
 
 ## Operations

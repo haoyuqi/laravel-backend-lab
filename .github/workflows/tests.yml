@@ -181,18 +181,19 @@ jobs:
         node-version: ['20']
 
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:18
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_DATABASE: laravel
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: laravel
         ports:
-          - 3306:3306
+          - 5432:5432
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="pg_isready -U root"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
       redis:
         image: redis:7-alpine
         ports:
@@ -213,7 +214,7 @@ jobs:
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: '8.3'
-          extensions: redis
+          extensions: redis, pdo_pgsql
           tools: composer:v2
 
       - name: Setup Node
@@ -240,6 +241,9 @@ jobs:
       - name: Install Node dependencies
         run: npm ci --quiet
 
+      - name: Install Playwright Browsers & Deps
+        run: npx playwright install --with-deps
+
       - name: Build frontend assets
         run: npm run build
 
@@ -249,69 +253,40 @@ jobs:
       - name: Prepare application directories
         run: chmod -R 777 storage bootstrap/cache
 
-      - name: Run migrations
-        run: php artisan migrate
-
-      - name: Install ChromeDriver for Laravel Dusk
+      - name: Run migrations & seed E2E data
         run: |
-          php artisan dusk:chrome-driver "$(google-chrome --version | awk '{print $3}' | cut -d. -f1)"
-          driver_path="$(find "$PWD/vendor/laravel/dusk/bin" -type f \( -name chromedriver -o -name chromedriver-linux \) -print -quit)"
-          test -n "$driver_path"
-          chmod +x "$driver_path"
-          if [ "$driver_path" != "$PWD/vendor/laravel/dusk/bin/chromedriver-linux" ]; then
-            ln -sf "$driver_path" vendor/laravel/dusk/bin/chromedriver-linux
-          fi
-          "$driver_path" --port=9515 > storage/logs/chromedriver.log 2>&1 &
+          php artisan migrate --force
+          php artisan db:seed --class=E2EDataSeeder --force
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: laravel
+          DB_USERNAME: root
+          DB_PASSWORD: password
 
-      - name: Wait for ChromeDriver
-        run: |
-          for attempt in {1..30}; do
-            curl --fail --silent http://127.0.0.1:9515/status > /dev/null && exit 0
-            sleep 1
-          done
-          cat storage/logs/chromedriver.log
-          exit 1
-
-      - name: Start application server
-        run: php artisan serve --host 127.0.0.1 --port 8000 --no-reload &
-
-      - name: Wait for application server
-        run: |
-          for attempt in {1..30}; do
-            curl --fail --silent http://127.0.0.1:8000 > /dev/null && exit 0
-            sleep 1
-          done
-          exit 1
-
-      - name: Run Dusk tests
-        run: php artisan dusk
+      - name: Run Playwright tests
+        run: npx playwright test
         env:
           APP_URL: http://127.0.0.1:8000
-          LARAVEL_SAIL: 1
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: laravel
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          TEST_DB_CONNECTION: pgsql
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: 5432
+          TEST_DB_DATABASE: laravel
+          TEST_DB_USERNAME: root
+          TEST_DB_PASSWORD: password
 
-      - name: Upload browser screenshots
+      - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: browser-screenshots
-          path: tests/Browser/screenshots
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Upload browser console logs
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: browser-console
-          path: tests/Browser/console
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Upload ChromeDriver log
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: chromedriver-log
-          path: storage/logs/chromedriver.log
+          name: playwright-report
+          path: playwright-report/
           if-no-files-found: ignore
           retention-days: 14

@@ -36,8 +36,8 @@ Laravel 后端构建。项目在同一代码库中整合了管理后台、访客
 - 使用 Laravel Telescope 和 Debugbar 进行应用调试与观测。
 - 定时执行备份、数据清理、访客统计汇总和 Bing 壁纸下载。
 - 使用 Vite 构建 Vue 3 与 Bootstrap 5 前端资源。
-- 使用独立测试数据库连接的 PHPUnit 单元与功能测试，以及 Laravel Dusk
-  浏览器测试。
+- 使用独立测试数据库连接的 PHPUnit 单元与功能测试，以及 Playwright
+  端到端浏览器测试。
 
 应用健康检查地址为 `/up`。
 
@@ -185,6 +185,14 @@ TEST_DB_DATABASE=laravel_test \
 TEST_DB_USERNAME=root \
 TEST_DB_PASSWORD='' \
 php artisan test
+```
+
+在独立测试数据库中运行覆盖桌面与移动端浏览器的 Playwright 端到端测试：
+
+```bash
+php artisan migrate --database=testing
+php artisan db:seed --class=E2EDataSeeder --database=testing
+npm run test:e2e
 ```
 
 ## 运维

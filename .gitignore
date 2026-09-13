@@ -18,7 +18,6 @@ yarn-error.log
 /public/build
 /public/css/
 /public/js/
-.env.dusk.local
 /storage/bing-wallpaper/
 /storage/backup/
 AGENTS.md
@@ -29,4 +28,9 @@ docs/
 .sisyphus/
 .agent-plans/
 .omo/
+*-requirements.md
 
+# Playwright artifacts
+test-results/
+playwright-report/
+playwright/.auth/
