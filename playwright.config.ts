@@ -31,6 +31,10 @@ const dbPassword = getEnvValue('TEST_DB_PASSWORD', getEnvValue('DB_PASSWORD', 'p
  */
 export default defineConfig({
   testDir: './e2e',
+  timeout: 30 * 1000,
+  expect: {
+    timeout: 10 * 1000,
+  },
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

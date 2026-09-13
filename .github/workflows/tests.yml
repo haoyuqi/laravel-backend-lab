@@ -253,6 +253,9 @@ jobs:
       - name: Prepare application directories
         run: chmod -R 777 storage bootstrap/cache
 
+      - name: Publish Filament assets
+        run: php artisan filament:upgrade
+
       - name: Run migrations & seed E2E data
         run: |
           php artisan migrate --force
