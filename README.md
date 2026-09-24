@@ -188,8 +188,14 @@ php artisan test
 ```
 
 To exercise the suite against MySQL or PostgreSQL, provide the dedicated
-`TEST_DB_*` variables. The configured account must be allowed to create the
-named test database if it does not already exist:
+`TEST_DB_*` variables. The test database name must contain only letters,
+numbers, and underscores, end in `_test`, and differ from the application's
+database. Laravel creates it on the first test run if it does not exist; the
+database server must already be running and the configured account must have
+permission to create databases. The `testing` connection reads `TEST_DB_*`
+only; it does not reuse the application's `DB_*` credentials. Use a dedicated
+test account with database-creation permission when possible. CI uses its
+short-lived database service account to exercise this path:
 
 ```bash
 TEST_DB_CONNECTION=mysql \
@@ -200,6 +206,13 @@ TEST_DB_USERNAME=root \
 TEST_DB_PASSWORD='' \
 php artisan test
 ```
+
+Use `TEST_DB_CONNECTION=pgsql`, port `5432`, and the PostgreSQL service's
+credentials to run the same tests against PostgreSQL. Inside Laradock's
+`workspace` container, set `TEST_DB_HOST=postgres`. A fresh clone defaults to
+in-memory SQLite and needs no database-server provisioning; normal application
+setup (dependencies, an application key, built assets, and Redis for tests that
+use it) still applies.
 
 ## Operations
 

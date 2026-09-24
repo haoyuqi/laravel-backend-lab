@@ -173,7 +173,7 @@ class StatsOverviewWidgetTest extends TestCase
             ->test(HealthStatusWidget::class)
             ->assertSuccessful()
             ->assertSee('Redis 缓存')
-            ->assertSee('PHP 8.3')
+            ->assertSee('PHP '.PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION)
             ->assertSee('Laravel 13')
             ->assertSee('Debug');
 

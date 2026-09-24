@@ -51,7 +51,7 @@ jobs:
               MYSQL_ALLOW_EMPTY_PASSWORD: yes
               MYSQL_DATABASE: laravel
             health-cmd: mysqladmin ping --silent
-            test-db-name: laravel
+            test-db-name: laravel_test
             test-db-user: root
             test-db-password: ''
           - name: mysql
@@ -63,7 +63,7 @@ jobs:
               MYSQL_ALLOW_EMPTY_PASSWORD: yes
               MYSQL_DATABASE: laravel
             health-cmd: mysqladmin ping --silent
-            test-db-name: laravel
+            test-db-name: laravel_test
             test-db-user: root
             test-db-password: ''
           - name: postgres
@@ -76,7 +76,7 @@ jobs:
               POSTGRES_PASSWORD: password
               POSTGRES_DB: laravel
             health-cmd: pg_isready -U root
-            test-db-name: laravel
+            test-db-name: laravel_test
             test-db-user: root
             test-db-password: password
           - name: postgres
@@ -89,7 +89,7 @@ jobs:
               POSTGRES_PASSWORD: password
               POSTGRES_DB: laravel
             health-cmd: pg_isready -U root
-            test-db-name: laravel
+            test-db-name: laravel_test
             test-db-user: root
             test-db-password: password
 
@@ -162,7 +162,8 @@ jobs:
       - name: Run PHP tests
         run: php artisan test
         env:
-          # Route PHPUnit's dedicated `testing` connection to this matrix cell.
+          # The service initializes only `laravel`; migrations must create
+          # the separate `laravel_test` database on the first test run.
           TEST_DB_CONNECTION: ${{ matrix.db.driver }}
           TEST_DB_HOST: 127.0.0.1
           TEST_DB_PORT: ${{ matrix.db.service-port }}

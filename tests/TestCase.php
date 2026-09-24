@@ -4,87 +4,50 @@ namespace Tests;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use PDO;
+use RuntimeException;
 
 abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication, RefreshDatabase;
 
     /**
-     * Ensure the configured real (MySQL/PostgreSQL) testing database exists
-     * before `migrate:fresh` runs. SQLite (including `:memory:`) needs no
-     * provisioning, which is what keeps a fresh checkout zero-config.
+     * Validate the target before RefreshDatabase can drop any tables.
+     * Laravel's migrate command creates a missing MySQL/PostgreSQL database.
      */
     protected function beforeRefreshingDatabase(): void
     {
+        if (config('database.default') !== 'testing') {
+            throw new RuntimeException('Tests must use the dedicated testing database connection.');
+        }
+
         $config = config('database.connections.testing');
         $driver = $config['driver'] ?? 'sqlite';
 
         if ($driver === 'sqlite') {
-            return;
-        }
-
-        $this->createDatabaseIfMissing($config);
-    }
-
-    /**
-     * Create the configured testing database on the server when it is missing.
-     * Driver-specific because PostgreSQL does not support `CREATE DATABASE IF NOT EXISTS`.
-     *
-     * @throws \RuntimeException when TEST_DB_DATABASE is absent for a real driver
-     */
-    protected function createDatabaseIfMissing(array $config): void
-    {
-        $database = $config['database'] ?? null;
-
-        if (! $database || $database === ':memory:') {
-            throw new \RuntimeException(
-                'TEST_DB_DATABASE must be set when TEST_DB_CONNECTION is "'.$config['driver'].'".'
-            );
-        }
-
-        $pdo = new PDO(
-            $this->serverDsn($config),
-            $config['username'] ?? 'forge',
-            $config['password'] ?? '',
-        );
-
-        if ($config['driver'] === 'mysql') {
-            $pdo->exec(sprintf(
-                'CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
-                $database
-            ));
-
-            return;
-        }
-
-        if ($config['driver'] === 'pgsql') {
-            $exists = $pdo->query(
-                'SELECT 1 FROM pg_database WHERE datname = '.$pdo->quote($database)
-            )->fetchColumn();
-
-            if ($exists === false) {
-                $pdo->exec(sprintf('CREATE DATABASE "%s"', $database));
+            if (($config['database'] ?? null) !== ':memory:') {
+                throw new RuntimeException('SQLite tests must use the in-memory database.');
             }
 
             return;
         }
 
-        throw new \RuntimeException('Unsupported TEST_DB_CONNECTION driver "'.$config['driver'].'".');
-    }
+        if (! in_array($driver, ['mysql', 'mariadb', 'pgsql'], true)) {
+            throw new RuntimeException('Unsupported TEST_DB_CONNECTION driver "'.$driver.'".');
+        }
 
-    /**
-     * Build a server-level DSN (no database selected) for the real drivers.
-     */
-    protected function serverDsn(array $config): string
-    {
-        $host = $config['host'] ?? '127.0.0.1';
-        $port = $config['port'] ?? (($config['driver'] ?? '') === 'pgsql' ? 5432 : 3306);
+        $database = $config['database'] ?? null;
 
-        return match ($config['driver']) {
-            'mysql' => sprintf('mysql:host=%s;port=%d', $host, $port),
-            'pgsql' => sprintf('pgsql:host=%s;port=%d;dbname=postgres', $host, $port),
-            default => throw new \RuntimeException('Unsupported driver "'.($config['driver'] ?? 'null').'".'),
-        };
+        if (! is_string($database) || preg_match('/\A[a-zA-Z][a-zA-Z0-9_]*_test\z/', $database) !== 1) {
+            throw new RuntimeException(
+                'TEST_DB_DATABASE must be a dedicated alphanumeric database name ending in "_test" when using '.$driver.'.'
+            );
+        }
+
+        foreach (config('database.connections') as $name => $connection) {
+            if ($name !== 'testing' && ($connection['driver'] ?? null) === $driver &&
+                ($connection['database'] ?? null) === $database) {
+                throw new RuntimeException('TEST_DB_DATABASE must not match another '.$driver.' connection.');
+            }
+        }
     }
 }
