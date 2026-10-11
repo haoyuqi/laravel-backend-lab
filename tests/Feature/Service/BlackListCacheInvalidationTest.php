@@ -168,7 +168,8 @@ class BlackListCacheInvalidationTest extends TestCase
         Log::shouldReceive('warning')
             ->once()
             ->with('blacklist cache invalidation failure', \Mockery::on(fn (array $context): bool => $context['ip'] === $ip && $context['error'] === 'redis down'));
-        Redis::shouldReceive('hdel')->once()->andThrow(new \RuntimeException('redis down'));
+        // Observer invalidation plus the audited operation's afterCommit retry.
+        Redis::shouldReceive('hdel')->twice()->andThrow(new \RuntimeException('redis down'));
 
         Livewire::actingAs($this->admin)
             ->test(CreateBlackList::class)

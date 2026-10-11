@@ -6,6 +6,7 @@ use App\Filament\Resources\BlackListResource\Pages\CreateBlackList;
 use App\Filament\Resources\BlackListResource\Pages\EditBlackList;
 use App\Filament\Resources\BlackListResource\Pages\ListBlackLists;
 use App\Models\BlackList;
+use App\Service\AdminBlackListOperations;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -21,6 +22,8 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Throwable;
 
 class BlackListResource extends Resource
 {
@@ -116,11 +119,24 @@ class BlackListResource extends Resource
                         'tableSearch' => $record->ip,
                     ])),
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()->using(fn (BlackList $record): bool => app(AdminBlackListOperations::class)->delete($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->using(function (DeleteBulkAction $action, Collection $records): void {
+                        $isFirstException = true;
+                        foreach ($records as $record) {
+                            try {
+                                app(AdminBlackListOperations::class)->delete($record);
+                            } catch (Throwable $exception) {
+                                $action->reportBulkProcessingFailure();
+                                if ($isFirstException) {
+                                    report($exception);
+                                    $isFirstException = false;
+                                }
+                            }
+                        }
+                    }),
                 ]),
             ]);
     }

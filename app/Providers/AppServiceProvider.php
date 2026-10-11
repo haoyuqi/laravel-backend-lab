@@ -7,10 +7,17 @@ use App\Libraries\BingWallpaper\Contracts\BingWallpaperInterface;
 use App\Libraries\GetCityByIp\FreeAPI;
 use App\Libraries\GetCityByIp\GeoIP;
 use App\Libraries\GetCityByIp\GetCityByIpAbstract;
+use App\Listeners\RecordAdminAuthentication;
 use App\Models\BlackList;
+use App\Observers\AdminOperationObserver;
 use App\Observers\BlackListObserver;
+use App\Support\AdminAuthenticationContext;
+use App\Support\AdminOperationContext;
 use App\Support\RedisFailureLogger;
 use GuzzleHttp\Client;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,6 +34,8 @@ class AppServiceProvider extends ServiceProvider
         }*/
         $this->app->register(TelescopeServiceProvider::class);
         $this->app->singleton(RedisFailureLogger::class);
+        $this->app->scoped(AdminOperationContext::class);
+        $this->app->scoped(AdminAuthenticationContext::class);
     }
 
     /**
@@ -47,6 +56,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         BlackList::observe(BlackListObserver::class);
+        Event::listen('eloquent.*', function (string $event, array $payload): void {
+            app(AdminOperationObserver::class)->handle($event, $payload);
+        });
+        Event::listen(Login::class, [RecordAdminAuthentication::class, 'captureLogin']);
+        Event::listen(Logout::class, [RecordAdminAuthentication::class, 'recordLogout']);
 
     }
 }
