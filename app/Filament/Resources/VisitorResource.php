@@ -3,8 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\VisitorResource\Pages\ListVisitors;
-use App\Models\BlackList;
 use App\Models\Visitor;
+use App\Service\AdminBlackListOperations;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\DatePicker;
@@ -139,12 +139,7 @@ class VisitorResource extends Resource
                     ->requiresConfirmation()
                     ->action(function (Collection $records): void {
                         foreach ($records as $record) {
-                            $blackList = BlackList::withTrashed()->firstOrNew(['ip' => $record->ip]);
-                            if ($blackList->trashed()) {
-                                $blackList->restore();
-                            } elseif (! $blackList->exists) {
-                                $blackList->save();
-                            }
+                            app(AdminBlackListOperations::class)->addIp($record->ip);
                         }
 
                         Notification::make()

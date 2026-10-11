@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\BlackListLogResource\Pages;
 
+use App\Filament\Pages\ListRecords;
 use App\Filament\Resources\BlackListLogResource;
-use Filament\Resources\Pages\ListRecords;
 
 class ListBlackListLogs extends ListRecords
 {

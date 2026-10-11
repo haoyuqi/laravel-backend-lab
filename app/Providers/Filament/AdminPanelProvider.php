@@ -2,9 +2,11 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\Login;
 use App\Filament\Widgets\HealthStatusWidget;
 use App\Filament\Widgets\ProjectInfoWidget;
 use App\Filament\Widgets\StatsOverview;
+use App\Http\Middleware\RecordAdminLogout;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -29,8 +31,9 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->databaseTransactions()
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->login()
+            ->login(Login::class)
             ->brandName('Laravel Backend Lab')
             ->colors([
                 'primary' => Color::Amber,
@@ -43,6 +46,7 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 '访客',
                 '黑名单',
+                '系统',
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
@@ -64,6 +68,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                RecordAdminLogout::class,
             ]);
     }
 }

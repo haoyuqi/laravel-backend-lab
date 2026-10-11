@@ -1,5 +1,56 @@
 # Upgrade Guide
 
+## Admin operation logs (#119)
+
+This change adds `admin_operation_logs` and the read-only admin log page. It does
+not migrate or rewrite existing users, visitors, blacklists, or interception
+logs. Historical admin actions are not backfilled.
+
+1. Back up the application database and deploy in a maintenance window so new
+   admin actions cannot run before their log table exists.
+2. Deploy the code, then run `php artisan migrate --force` against the intended
+   application database using your normal deployment environment. The new
+   migration is `2026_10_11_000000_create_admin_operation_logs_table.php`.
+3. Verify an authorized admin can view **系统 → 操作日志** and perform a test
+   blacklist change, then log out and log back in. Check the login/logout rows,
+   resource type/ID, actor, safe before/after state, and time. Unauthorized
+   users must remain denied. Exit maintenance mode after verification.
+4. Include the new table in backups and decide how long operator names and IPs
+   should be retained. Pruning is manual and dry-run by default; see the README.
+
+If the log table is missing or log writes fail, audited admin data changes fail
+and roll back instead of silently succeeding without history. Bulk actions
+commit each successful record independently. Direct model/job/CLI writes are
+outside this admin audit coverage.
+
+The new table uses stable resource aliases and nullable string subject IDs;
+authentication events have no subject. Existing action history is not backfilled.
+The migration is new/unreleased: do not edit an already deployed copy. If a
+previous development version of this table has been deployed, stop and prepare
+an additive compatibility migration rather than dropping its history.
+
+Resource pages use `App\Filament\Pages\CreateRecord`, `EditRecord` and
+`ListRecords`. Add safe model policies in `config/admin-operation-logs.php`.
+The edit base covers both full and partial form saves. Single-record actions
+are transactional; bulk callbacks retain per-record transactions and must use
+`AdminOperationRecorder::run()`. Builder/pivot/raw SQL custom mutations require
+its explicit locked snapshot API. Do not assume model observers cover writes
+that bypass events, or that a default-connection transaction covers another DB.
+Relationship writes must supply a deterministic persisted snapshot callback as
+the fourth `explicit()` argument, and configure its `relationship_fields` whitelist.
+Coordinate all relationship writers through the same parent-row lock/connection.
+
+Successful backend login is recorded after the authentication method returns;
+audit failure revokes the new session/remember state instead of allowing an
+unaudited login. Logout remains possible during audit-storage failure, displays
+a warning, and may lack a logout row in that exceptional case. Reads/searches/
+exports, rejected attempts and non-backend shared-guard authentication are excluded.
+
+For rollback, restore the previous code first; the additional table can remain
+to preserve history. Rolling back this migration drops only the new table and
+**permanently removes its audit history**. Back it up before any schema rollback.
+No development or production database migration is executed by the tests.
+
 ## Filament 3 to 5 upgrade (#136)
 
 This upgrade modernizes the administrative panel by upgrading Filament from `^3.0` to `^5.0` and Livewire from `^3.0` to `^4.0`.

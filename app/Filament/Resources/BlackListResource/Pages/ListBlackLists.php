@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\BlackListResource\Pages;
 
+use App\Filament\Pages\ListRecords;
 use App\Filament\Resources\BlackListResource;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
 class ListBlackLists extends ListRecords
 {

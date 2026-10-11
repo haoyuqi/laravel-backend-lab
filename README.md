@@ -46,6 +46,66 @@ project starter.
 
 The application health endpoint is available at `/up`.
 
+### Admin operation logs
+
+The admin panel's **系统 → 操作日志** page records backend data changes and
+successful backend login/logout. All current write entry points are covered:
+blacklist creation, editing, deletion (including bulk deletion), and visitor
+bulk additions/restores. The recorder supports different resource types and
+string/UUID record IDs; logs contain the operator's ID/name snapshot, action,
+entry point, operation ID, safe before/after state, and time.
+Reads, searches, exports, failed/denied logins, unchanged actions and direct
+model writes from jobs or CLI are not recorded. Request bodies, cookies,
+credentials, and user emails are not captured.
+
+New resource pages must extend the common `App\Filament\Pages` create/edit/list
+pages. Model fields and stable resource aliases are explicitly configured in
+`config/admin-operation-logs.php`; unconfigured business model writes in an
+audited operation fail before persistence. Safe snapshots are bounded and
+recursively exclude sensitive fields. Infrastructure models are excluded;
+making one writable in the admin requires removing its exclusion and adding
+its safe policy. Custom write methods and bulk callbacks must use
+`AdminOperationRecorder::run()` with the business connection. Query-builder,
+pivot and raw SQL mutations bypass model events and must use the recorder's
+explicit locked before/write/after interface; arbitrary SQL cannot be
+automatically audited by Eloquent. Test-only User CRUD demonstrates reuse
+without adding production user-management permissions.
+
+For relationship writes, call `explicit($subject, 'update', $mutation, $snapshot)`:
+the snapshot callback reads deterministic persisted relationship state while the
+parent row is locked. Allow its top-level fields in the model policy's
+`relationship_fields`; nested secrets and oversized snapshots are rejected or
+filtered. Attach, detach and pivot updates then compare that state, including
+no-op detection. All writers must use the same connection and parent-row lock.
+Use the callback's supplied model for Eloquent writes to avoid duplicate logs.
+
+Each change and its log use one database transaction: if logging fails, that
+record's change rolls back. Bulk actions remain per-record; earlier successful
+records remain committed if a later record fails. The page is read-only and
+uses the existing admin access policy. Ordinary Eloquent instance updates/deletes
+are rejected, but writes that bypass model events (including bulk queries and
+quiet writes), raw SQL, and database administrators can modify history; this is not a
+tamper-proof audit system. Redis cache invalidation is retried after commit;
+database and Redis changes are not a distributed transaction.
+
+Backend login is logged only after the authentication method succeeds. If its
+log cannot be saved, the new authentication is revoked and login returns an
+error. Logout always invalidates the local session; if audit storage fails,
+logout still succeeds with a warning, and that logout log may be missing.
+Session/cookie state and the database are not one atomic transaction.
+
+Logs contain personal data (operator names and IPs). They are retained until
+explicitly pruned; choose a retention policy appropriate to your deployment
+and include this table in backups. Preview pruning first:
+
+```bash
+php artisan admin-operation-logs:prune --days=365
+```
+
+After reviewing the count and backing up history, add `--force` to delete old
+logs in batches of 1,000. The minimum retention is 30 days; no automatic prune
+schedule is configured. See [UPGRADE.md](UPGRADE.md) before deploying.
+
 ## Technology Stack
 
 | Component | Version | Purpose |
