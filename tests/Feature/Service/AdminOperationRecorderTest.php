@@ -21,7 +21,10 @@ class AdminOperationRecorderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->actingAs(User::factory()->create());
+
+        Schema::dropIfExists('audit_fixture_links');
+        Schema::dropIfExists('audit_fixtures');
+
         Schema::create('audit_fixtures', function (Blueprint $table): void {
             $table->string('id')->primary();
             $table->string('name');
@@ -36,6 +39,20 @@ class AdminOperationRecorderTest extends TestCase
             $table->integer('weight');
             $table->primary(['parent_id', 'related_id']);
         });
+
+        // In MySQL, DDL statements (Schema::create / dropIfExists) trigger an implicit commit,
+        // which commits the transaction started by RefreshDatabase and leaves MySQL in
+        // autocommit mode while Laravel's connection transaction counter remains at 1.
+        // Re-synchronize the transaction state so nested transactions and savepoints work properly.
+        if (DB::connection()->getDriverName() === 'mysql') {
+            while (DB::connection()->transactionLevel() > 0) {
+                DB::connection()->rollBack();
+            }
+            DB::connection()->beginTransaction();
+        }
+
+        $this->actingAs(User::factory()->create());
+
         config(['admin-operation-logs.models.'.AuditFixture::class => [
             'type' => 'fixture', 'fields' => ['name', 'status', 'settings', 'password'],
             'relationship_fields' => ['links'],
@@ -43,6 +60,14 @@ class AdminOperationRecorderTest extends TestCase
         config(['admin-operation-logs.models.'.AuditSoftFixture::class => [
             'type' => 'soft_fixture', 'fields' => ['name', 'status'],
         ]]);
+    }
+
+    protected function tearDown(): void
+    {
+        Schema::dropIfExists('audit_fixture_links');
+        Schema::dropIfExists('audit_fixtures');
+
+        parent::tearDown();
     }
 
     public function test_generic_uuid_subject_and_persisted_snapshots_preserve_untouched_database_fields(): void
