@@ -5,7 +5,8 @@
         "dev": "vite",
         "build": "vite build",
         "test:e2e": "npm run build && playwright test",
-        "test:e2e:ui": "npm run build && playwright test --ui"
+        "test:e2e:ui": "npm run build && playwright test --ui",
+        "test:reverb": "playwright test --config=playwright.reverb.config.ts"
     },
     "devDependencies": {
         "@playwright/test": "^1.50.1",
@@ -16,8 +17,8 @@
         "bootstrap": "^5.3.3",
         "laravel-echo": "^2.5.0",
         "laravel-vite-plugin": "^1.2.0",
+        "pusher-js": "^8.6.0",
         "sass": "^1.85.1",
-        "socket.io-client": "^4.8.1",
         "tailwindcss": "^4.3.3",
         "vite": "^6.2.0",
         "vue": "^3.5.13"

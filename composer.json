@@ -12,6 +12,7 @@
         "laravel-lang/common": "^6.0",
         "laravel/framework": "^13.0",
         "laravel/horizon": "^5.30",
+        "laravel/reverb": "^1.0",
         "laravel/telescope": "^5.0",
         "laravel/tinker": "^3.0",
         "spatie/laravel-backup": "^10.0",

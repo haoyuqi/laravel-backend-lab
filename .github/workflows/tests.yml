@@ -356,6 +356,9 @@ jobs:
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: password
 
+      - name: Verify Reverb real-time updates
+        run: npm run test:reverb
+
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -1,5 +1,27 @@
 # Upgrade Guide
 
+## Real-time updates: Socket.IO → Reverb (#137)
+
+The public `push-time` channel, `PushTimeEvent` payload, `push-time` queue,
+and once-per-minute schedule are unchanged. Redis broadcasting and the
+Socket.IO client have been removed. This change requires no database migration.
+
+1. Install the new locked dependencies with `composer install` and `npm ci`.
+2. For live updates, run `php artisan reverb:install` to generate local
+   credentials and enable `BROADCAST_CONNECTION=reverb`. Configure `REVERB_*`
+   and `VITE_REVERB_*` as described in the README. Remove `VITE_REDIS_PREFIX`
+   (or the older `MIX_REDIS_PREFIX`) and `REDIS_BROADCAST_DB`; Reverb subscribes
+   to `push-time` directly and does not use a Redis key prefix.
+3. Stop the old Socket.IO broadcasting server for this application. Start
+   Reverb and the scheduler; asynchronous queues need a worker consuming
+   `push-time`. Rebuild assets and verify `/time` receives new rows.
+4. To leave real-time updates disabled, keep `BROADCAST_CONNECTION=log` and
+   `REVERB_APP_KEY` empty, then rebuild assets. The initial time still renders.
+
+Older sections below describe previous releases; their Socket.IO instructions
+are superseded by this section. Production deployment is outside this change's
+local acceptance scope.
+
 ## Admin operation logs (#119)
 
 This change adds `admin_operation_logs` and the read-only admin log page. It does
