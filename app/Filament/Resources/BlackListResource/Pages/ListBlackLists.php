@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\BlackListResource\Pages;
 
+use App\Filament\Pages\ListRecords;
 use App\Filament\Resources\BlackListResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Actions\CreateAction;
 
 class ListBlackLists extends ListRecords
 {
@@ -13,7 +13,7 @@ class ListBlackLists extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }

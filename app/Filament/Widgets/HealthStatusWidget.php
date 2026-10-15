@@ -12,7 +12,7 @@ class HealthStatusWidget extends Widget
 
     protected int|string|array $columnSpan = 'full';
 
-    protected static string $view = 'filament.widgets.health-status-widget';
+    protected string $view = 'filament.widgets.health-status-widget';
 
     public function getViewData(): array
     {

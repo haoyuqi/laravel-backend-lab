@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\BlackListLogResource\Pages;
+use App\Filament\Resources\BlackListLogResource\Pages\ListBlackListLogs;
 use App\Models\BlackListLog;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +20,7 @@ class BlackListLogResource extends Resource
 {
     protected static ?string $model = BlackListLog::class;
 
-    protected static ?string $navigationGroup = '黑名单';
+    protected static string|\UnitEnum|null $navigationGroup = '黑名单';
 
     protected static ?string $navigationLabel = '拦截日志';
 
@@ -27,18 +30,18 @@ class BlackListLogResource extends Resource
 
     protected static ?string $pluralModelLabel = '拦截日志';
 
-    protected static ?string $navigationIcon = 'heroicon-o-shield-exclamation';
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldExclamation;
 
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['blackList']);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('url')
+        return $schema
+            ->components([
+                TextInput::make('url')
                     ->required(),
             ]);
     }
@@ -47,25 +50,25 @@ class BlackListLogResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('blackList.ip')
+                TextColumn::make('blackList.ip')
                     ->label('IP')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('url')
+                TextColumn::make('url')
                     ->label('URL')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('拦截时间')
                     ->dateTime()
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\Filter::make('created_at')
+                Filter::make('created_at')
                     ->label('拦截时间')
-                    ->form([
-                        Forms\Components\DatePicker::make('created_from')->label('开始日期'),
-                        Forms\Components\DatePicker::make('created_until')->label('结束日期'),
+                    ->schema([
+                        DatePicker::make('created_from')->label('开始日期'),
+                        DatePicker::make('created_until')->label('结束日期'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -80,8 +83,8 @@ class BlackListLogResource extends Resource
                     }),
             ])
             ->defaultSort('created_at', 'desc')
-            ->actions([])
-            ->bulkActions([]);
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 
     public static function canCreate(): bool
@@ -112,7 +115,7 @@ class BlackListLogResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListBlackListLogs::route('/'),
+            'index' => ListBlackListLogs::route('/'),
         ];
     }
 }

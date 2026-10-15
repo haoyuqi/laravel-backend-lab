@@ -2,12 +2,13 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\VisitorLogResource\Pages;
+use App\Filament\Resources\VisitorLogResource\Pages\ListVisitorLogs;
 use App\Models\VisitorLog;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,7 +16,7 @@ class VisitorLogResource extends Resource
 {
     protected static ?string $model = VisitorLog::class;
 
-    protected static ?string $navigationGroup = '访客';
+    protected static string|\UnitEnum|null $navigationGroup = '访客';
 
     protected static ?string $navigationLabel = '访客日志';
 
@@ -25,16 +26,16 @@ class VisitorLogResource extends Resource
 
     protected static ?string $pluralModelLabel = '访客日志';
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('visitor_id')
+        return $schema
+            ->components([
+                TextInput::make('visitor_id')
                     ->required()
                     ->numeric(),
-                Forms\Components\TextInput::make('url')
+                TextInput::make('url')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -44,15 +45,15 @@ class VisitorLogResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('visitor.ip')
+                TextColumn::make('visitor.ip')
                     ->label('IP')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('url')
+                TextColumn::make('url')
                     ->label('URL')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable(),
             ])
@@ -60,8 +61,8 @@ class VisitorLogResource extends Resource
                 //
             ])
             ->defaultSort('created_at', 'desc')
-            ->actions([])
-            ->bulkActions([]);
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 
     public static function canCreate(): bool
@@ -92,7 +93,7 @@ class VisitorLogResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListVisitorLogs::route('/'),
+            'index' => ListVisitorLogs::route('/'),
         ];
     }
 }

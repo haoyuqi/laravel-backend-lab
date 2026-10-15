@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\VisitorLogResource\Pages;
 
+use App\Filament\Pages\ListRecords;
 use App\Filament\Resources\VisitorLogResource;
-use Filament\Resources\Pages\ListRecords;
 
 class ListVisitorLogs extends ListRecords
 {

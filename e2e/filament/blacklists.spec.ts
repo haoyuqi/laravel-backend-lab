@@ -8,6 +8,9 @@ test.describe('Filament Blacklist Resources (FR-007, AC-003)', () => {
     // Verify page header
     await expect(page.getByRole('heading', { name: '黑名单列表' })).toBeVisible();
 
+    // Other projects add records to the shared DB, so the seed may not be on page one.
+    await page.getByRole('searchbox', { name: '搜索', exact: true }).fill('127.0.0.99');
+
     // Verify seeded blacklist IP (127.0.0.99)
     await expect(page.getByText('127.0.0.99').first()).toBeVisible();
 

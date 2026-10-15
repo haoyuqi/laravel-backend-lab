@@ -2,14 +2,21 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\VisitorResource\Pages;
-use App\Models\BlackList;
+use App\Filament\Resources\VisitorResource\Pages\ListVisitors;
 use App\Models\Visitor;
-use Filament\Forms;
-use Filament\Forms\Form;
+use App\Service\AdminBlackListOperations;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -20,7 +27,7 @@ class VisitorResource extends Resource
 {
     protected static ?string $model = Visitor::class;
 
-    protected static ?string $navigationGroup = '访客';
+    protected static string|\UnitEnum|null $navigationGroup = '访客';
 
     protected static ?string $navigationLabel = '访客列表';
 
@@ -30,7 +37,7 @@ class VisitorResource extends Resource
 
     protected static ?string $pluralModelLabel = '访客列表';
 
-    protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
     public static function getEloquentQuery(): Builder
     {
@@ -42,13 +49,13 @@ class VisitorResource extends Resource
             ->with(['blackList']);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('ip')
+        return $schema
+            ->components([
+                TextInput::make('ip')
                     ->required(),
-                Forms\Components\TextInput::make('city')
+                TextInput::make('city')
                     ->maxLength(50),
             ]);
     }
@@ -57,21 +64,21 @@ class VisitorResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('ip')
+                TextColumn::make('ip')
                     ->label('IP')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('city')
+                TextColumn::make('city')
                     ->label('城市')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('today_logs_count')
+                TextColumn::make('today_logs_count')
                     ->label('今日访问量')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('all_logs_count')
+                TextColumn::make('all_logs_count')
                     ->label('历史访问量')
                     ->sortable(),
-                Tables\Columns\IconColumn::make('is_blacklisted')
+                IconColumn::make('is_blacklisted')
                     ->label('黑名单')
                     ->state(fn (Visitor $record): bool => $record->blackList !== null)
                     ->boolean()
@@ -80,21 +87,21 @@ class VisitorResource extends Resource
                     ->trueColor('danger')
                     ->falseColor('gray')
                     ->alignCenter(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('首次访问')
                     ->dateTime()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('最后访问')
                     ->dateTime()
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\Filter::make('created_at')
+                Filter::make('created_at')
                     ->label('首次访问时间')
-                    ->form([
-                        Forms\Components\DatePicker::make('created_from')->label('开始日期'),
-                        Forms\Components\DatePicker::make('created_until')->label('结束日期'),
+                    ->schema([
+                        DatePicker::make('created_from')->label('开始日期'),
+                        DatePicker::make('created_until')->label('结束日期'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -107,7 +114,7 @@ class VisitorResource extends Resource
                                 fn (Builder $query, $date): Builder => $query->where('created_at', '<=', Carbon::parse($date)->endOfDay()),
                             );
                     }),
-                Tables\Filters\TernaryFilter::make('black_list')
+                TernaryFilter::make('black_list')
                     ->label('是否在黑名单')
                     ->queries(
                         true: fn (Builder $query) => $query->has('blackList'),
@@ -116,28 +123,23 @@ class VisitorResource extends Resource
                     ),
             ])
             ->defaultSort('created_at', 'desc')
-            ->actions([
-                Tables\Actions\Action::make('view_logs')
+            ->recordActions([
+                Action::make('view_logs')
                     ->label('查看')
                     ->icon('heroicon-o-eye')
                     ->url(fn (Visitor $record): string => VisitorLogResource::getUrl('index', [
                         'tableSearch' => $record->ip,
                     ])),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkAction::make('add_to_black_list')
+            ->toolbarActions([
+                BulkAction::make('add_to_black_list')
                     ->label('加入黑名单')
                     ->icon('heroicon-o-no-symbol')
                     ->color('danger')
                     ->requiresConfirmation()
                     ->action(function (Collection $records): void {
                         foreach ($records as $record) {
-                            $blackList = BlackList::withTrashed()->firstOrNew(['ip' => $record->ip]);
-                            if ($blackList->trashed()) {
-                                $blackList->restore();
-                            } elseif (! $blackList->exists) {
-                                $blackList->save();
-                            }
+                            app(AdminBlackListOperations::class)->addIp($record->ip);
                         }
 
                         Notification::make()
@@ -177,7 +179,7 @@ class VisitorResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListVisitors::route('/'),
+            'index' => ListVisitors::route('/'),
         ];
     }
 }

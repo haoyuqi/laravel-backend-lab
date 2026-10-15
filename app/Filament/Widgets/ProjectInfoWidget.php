@@ -12,5 +12,5 @@ class ProjectInfoWidget extends Widget
 
     protected int|string|array $columnSpan = 1;
 
-    protected static string $view = 'filament.widgets.project-info-widget';
+    protected string $view = 'filament.widgets.project-info-widget';
 }

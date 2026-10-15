@@ -31,6 +31,7 @@ const dbPassword = getEnvValue('TEST_DB_PASSWORD', getEnvValue('DB_PASSWORD', 'p
  */
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: 'reverb/**',
   timeout: 30 * 1000,
   expect: {
     timeout: 10 * 1000,

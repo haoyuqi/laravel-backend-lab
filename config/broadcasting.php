@@ -11,7 +11,7 @@ return [
     | framework when an event needs to be broadcast. You may set this to
     | any of the connections defined in the "connections" array below.
     |
-    | Supported: "pusher", "redis", "log", "null"
+    | Supported: "reverb", "pusher", "log", "null"
     |
     */
 
@@ -30,6 +30,21 @@ return [
 
     'connections' => [
 
+        'reverb' => [
+            'driver' => 'reverb',
+            'key' => env('REVERB_APP_KEY'),
+            'secret' => env('REVERB_APP_SECRET'),
+            'app_id' => env('REVERB_APP_ID'),
+            'options' => [
+                'host' => env('REVERB_HOST'),
+                'port' => env('REVERB_PORT', 443),
+                'scheme' => env('REVERB_SCHEME', 'https'),
+                'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
+                'path' => env('REVERB_SERVER_PATH', ''),
+            ],
+            'client_options' => [],
+        ],
+
         'pusher' => [
             'driver' => 'pusher',
             'key' => env('PUSHER_APP_KEY'),
@@ -39,11 +54,6 @@ return [
                 'cluster' => env('PUSHER_APP_CLUSTER'),
                 'useTLS' => true,
             ],
-        ],
-
-        'redis' => [
-            'driver' => 'redis',
-            'connection' => 'broadcast',
         ],
 
         'log' => [

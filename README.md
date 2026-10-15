@@ -7,9 +7,9 @@
 
 <p align="center">
   <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml/badge.svg?branch=master"></a>
-  <a href="https://www.php.net/"><img alt="PHP 8.3 or later" src="https://img.shields.io/badge/PHP-%5E8.3-777BB4?logo=php&logoColor=white"></a>
+  <a href="https://www.php.net/"><img alt="PHP 8.4 or later" src="https://img.shields.io/badge/PHP-%5E8.4-777BB4?logo=php&logoColor=white"></a>
   <a href="https://laravel.com/"><img alt="Laravel 13" src="https://img.shields.io/badge/Laravel-13.x-FF2D20?logo=laravel&logoColor=white"></a>
-  <a href="https://filamentphp.com/"><img alt="Filament 3" src="https://img.shields.io/badge/Filament-3.x-FDAE4B"></a>
+  <a href="https://filamentphp.com/"><img alt="Filament 5" src="https://img.shields.io/badge/Filament-5.x-FDAE4B"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/haoyuqi/laravel-backend-lab"></a>
 </p>
 
@@ -46,13 +46,73 @@ project starter.
 
 The application health endpoint is available at `/up`.
 
+### Admin operation logs
+
+The admin panel's **系统 → 操作日志** page records backend data changes and
+successful backend login/logout. All current write entry points are covered:
+blacklist creation, editing, deletion (including bulk deletion), and visitor
+bulk additions/restores. The recorder supports different resource types and
+string/UUID record IDs; logs contain the operator's ID/name snapshot, action,
+entry point, operation ID, safe before/after state, and time.
+Reads, searches, exports, failed/denied logins, unchanged actions and direct
+model writes from jobs or CLI are not recorded. Request bodies, cookies,
+credentials, and user emails are not captured.
+
+New resource pages must extend the common `App\Filament\Pages` create/edit/list
+pages. Model fields and stable resource aliases are explicitly configured in
+`config/admin-operation-logs.php`; unconfigured business model writes in an
+audited operation fail before persistence. Safe snapshots are bounded and
+recursively exclude sensitive fields. Infrastructure models are excluded;
+making one writable in the admin requires removing its exclusion and adding
+its safe policy. Custom write methods and bulk callbacks must use
+`AdminOperationRecorder::run()` with the business connection. Query-builder,
+pivot and raw SQL mutations bypass model events and must use the recorder's
+explicit locked before/write/after interface; arbitrary SQL cannot be
+automatically audited by Eloquent. Test-only User CRUD demonstrates reuse
+without adding production user-management permissions.
+
+For relationship writes, call `explicit($subject, 'update', $mutation, $snapshot)`:
+the snapshot callback reads deterministic persisted relationship state while the
+parent row is locked. Allow its top-level fields in the model policy's
+`relationship_fields`; nested secrets and oversized snapshots are rejected or
+filtered. Attach, detach and pivot updates then compare that state, including
+no-op detection. All writers must use the same connection and parent-row lock.
+Use the callback's supplied model for Eloquent writes to avoid duplicate logs.
+
+Each change and its log use one database transaction: if logging fails, that
+record's change rolls back. Bulk actions remain per-record; earlier successful
+records remain committed if a later record fails. The page is read-only and
+uses the existing admin access policy. Ordinary Eloquent instance updates/deletes
+are rejected, but writes that bypass model events (including bulk queries and
+quiet writes), raw SQL, and database administrators can modify history; this is not a
+tamper-proof audit system. Redis cache invalidation is retried after commit;
+database and Redis changes are not a distributed transaction.
+
+Backend login is logged only after the authentication method succeeds. If its
+log cannot be saved, the new authentication is revoked and login returns an
+error. Logout always invalidates the local session; if audit storage fails,
+logout still succeeds with a warning, and that logout log may be missing.
+Session/cookie state and the database are not one atomic transaction.
+
+Logs contain personal data (operator names and IPs). They are retained until
+explicitly pruned; choose a retention policy appropriate to your deployment
+and include this table in backups. Preview pruning first:
+
+```bash
+php artisan admin-operation-logs:prune --days=365
+```
+
+After reviewing the count and backing up history, add `--force` to delete old
+logs in batches of 1,000. The minimum retention is 30 days; no automatic prune
+schedule is configured. See [UPGRADE.md](UPGRADE.md) before deploying.
+
 ## Technology Stack
 
 | Component | Version | Purpose |
 | --- | --- | --- |
-| [PHP](https://www.php.net/) | 8.3+ | Application runtime |
+| [PHP](https://www.php.net/) | 8.4+ | Application runtime |
 | [Laravel](https://laravel.com/) | 13.x | Web application framework |
-| [Filament](https://filamentphp.com/) | 3.x | Administration panel |
+| [Filament](https://filamentphp.com/) | 5.x | Administration panel |
 | [Laravel Horizon](https://laravel.com/docs/horizon) | 5.x | Redis queue monitoring |
 | [Laravel Telescope](https://laravel.com/docs/telescope) | 5.x | Local application inspection |
 | [Laravel Lang](https://laravel-lang.com/) | 6.x | Application translations |
@@ -65,7 +125,7 @@ The application health endpoint is available at `/up`.
 
 The application requires:
 
-- PHP 8.3 or later, with the extensions required by `composer.lock`;
+- PHP 8.4 or later, with the extensions required by `composer.lock`;
 - Composer 2;
 - Node.js 20 and npm;
 - SQLite, MySQL, or PostgreSQL for persistent application data;
@@ -89,7 +149,7 @@ application code change; changing only `.env` is not sufficient.
 | Scheduler | Feature-dependent | Run `php artisan schedule:run` every minute to enable scheduled backups, cleanup, statistics, and maintenance tasks. |
 | Mail server | No | Use `MAIL_MAILER=log` during development, or configure SMTP for outgoing mail. |
 | Object storage | No | The default local filesystem works without S3. Configure `FILESYSTEM_DRIVER`, `FILESYSTEM_CLOUD`, and `AWS_*` only when external storage is needed. |
-| Real-time server | No | Keep `BROADCAST_CONNECTION=log` when real-time events are disabled. The included Echo integration needs Redis broadcasting, a compatible Socket.IO server, and the matching `VITE_REDIS_PREFIX`. |
+| Real-time server | No | Keep `BROADCAST_CONNECTION=log` and `REVERB_APP_KEY` empty when real-time events are disabled. Enable Laravel Reverb for live time updates; no Redis broadcasting server is needed. |
 | Telescope and Debugbar | No | Set `TELESCOPE_ENABLED=false` and `DEBUGBAR_ENABLED=false` when these inspection tools should not collect data or expose their interfaces. |
 
 Important environment options include:
@@ -100,7 +160,7 @@ Important environment options include:
 - `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PASSWORD`, and `REDIS_PORT` for Redis;
 - `CACHE_STORE`, `SESSION_DRIVER`, and `QUEUE_CONNECTION` for state and job
   storage;
-- `BROADCAST_CONNECTION` and `VITE_REDIS_PREFIX` for real-time events;
+- `BROADCAST_CONNECTION`, `REVERB_*`, and `VITE_REVERB_*` for real-time events;
 - `MAIL_MAILER` and `MAIL_*` for outgoing mail;
 - `FILESYSTEM_DRIVER`, `FILESYSTEM_CLOUD`, and `AWS_*` for file storage;
 - `TELESCOPE_ENABLED` and `DEBUGBAR_ENABLED` for optional inspection tools;
@@ -174,8 +234,48 @@ npm run dev
 Create an optimized frontend build with `npm run build`. Do not use the removed
 Laravel Mix commands from earlier releases.
 
-For an existing installation, follow [UPGRADE.md](UPGRADE.md) before deploying a
-new minor release.
+For an existing installation, follow [UPGRADE.md](UPGRADE.md) before deploying
+v3.0.0. This major release requires PHP 8.4+, upgrades Filament and Livewire,
+replaces Socket.IO with Reverb, and includes two database migrations. Set
+`APP_VERSION=3.0.0` in existing environments after upgrading.
+
+### Local real-time updates
+
+The `/time` page uses [Laravel Reverb](https://laravel.com/docs/13.x/reverb)
+and Laravel Echo. The application still works without a WebSocket server.
+To enable live updates, generate local credentials:
+
+```bash
+php artisan reverb:install
+```
+
+Set `BROADCAST_CONNECTION=reverb`, `REVERB_HOST=localhost`,
+`REVERB_PORT=8080`, and `REVERB_SCHEME=http`. Keep
+`REVERB_SCALING_ENABLED=false` for a single server. The `VITE_REVERB_*`
+variables in `.env.example` mirror these values. Never put
+`REVERB_APP_SECRET` in a `VITE_*` variable. Rebuild with `npm run build`
+after changing frontend connection settings.
+
+Run these commands in separate terminals:
+
+```bash
+php artisan reverb:start
+php artisan schedule:work
+# Only needed with an asynchronous QUEUE_CONNECTION:
+php artisan queue:work --queue=push-time
+```
+
+Open `/time` over HTTP and wait for the next minute: one new row should arrive
+without refreshing. `REVERB_SERVER_HOST` and `REVERB_SERVER_PORT` control the
+listening socket; `REVERB_HOST` and `REVERB_PORT` tell Laravel where to send
+events. `VITE_REVERB_HOST` must be reachable from the browser; when using
+containers it may differ from the server-side host.
+
+`npm run test:reverb` starts isolated application and Reverb processes on
+ports 8000 and 8080, builds test assets, and verifies real WebSocket delivery
+and resubscription in Chromium. Stop other processes using those ports first.
+It uses an in-memory database and ephemeral Reverb credentials. Rebuild normal
+assets afterwards with `npm run build`.
 
 ## Testing
 

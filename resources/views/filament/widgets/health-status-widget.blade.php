@@ -23,7 +23,7 @@
             </div>
         </x-slot>
 
-        <x-filament::grid :default="1" :sm="2" :lg="4" class="gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             @foreach($cards as $card)
                 <div class="flex items-center justify-between gap-x-2 rounded-lg border border-gray-200/70 bg-gray-50/50 p-3 dark:border-white/10 dark:bg-white/5">
                     <div class="flex items-center gap-x-3 min-w-0">
@@ -46,6 +46,6 @@
                     </div>
                 </div>
             @endforeach
-        </x-filament::grid>
+        </div>
     </x-filament::section>
 </x-filament-widgets::widget>

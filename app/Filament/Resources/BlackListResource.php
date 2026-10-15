@@ -2,21 +2,34 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\BlackListResource\Pages;
+use App\Filament\Resources\BlackListResource\Pages\CreateBlackList;
+use App\Filament\Resources\BlackListResource\Pages\EditBlackList;
+use App\Filament\Resources\BlackListResource\Pages\ListBlackLists;
 use App\Models\BlackList;
-use Filament\Forms;
-use Filament\Forms\Form;
+use App\Service\AdminBlackListOperations;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Throwable;
 
 class BlackListResource extends Resource
 {
     protected static ?string $model = BlackList::class;
 
-    protected static ?string $navigationGroup = '黑名单';
+    protected static string|\UnitEnum|null $navigationGroup = '黑名单';
 
     protected static ?string $navigationLabel = '黑名单列表';
 
@@ -26,7 +39,7 @@ class BlackListResource extends Resource
 
     protected static ?string $pluralModelLabel = '黑名单列表';
 
-    protected static ?string $navigationIcon = 'heroicon-o-no-symbol';
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedNoSymbol;
 
     public static function getEloquentQuery(): Builder
     {
@@ -38,11 +51,11 @@ class BlackListResource extends Resource
             ->with(['city']);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('ip')
+        return $schema
+            ->components([
+                TextInput::make('ip')
                     ->label('IP')
                     ->required()
                     ->ip()
@@ -55,35 +68,35 @@ class BlackListResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('ip')
+                TextColumn::make('ip')
                     ->label('IP')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('city.city')
+                TextColumn::make('city.city')
                     ->label('城市')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('today_logs_count')
+                TextColumn::make('today_logs_count')
                     ->label('今日拦截量')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('all_logs_count')
+                TextColumn::make('all_logs_count')
                     ->label('历史拦截量')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('添加时间')
                     ->dateTime()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('最后拦截时间')
                     ->dateTime()
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\Filter::make('created_at')
+                Filter::make('created_at')
                     ->label('添加时间')
-                    ->form([
-                        Forms\Components\DatePicker::make('created_from')->label('开始日期'),
-                        Forms\Components\DatePicker::make('created_until')->label('结束日期'),
+                    ->schema([
+                        DatePicker::make('created_from')->label('开始日期'),
+                        DatePicker::make('created_until')->label('结束日期'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -98,19 +111,32 @@ class BlackListResource extends Resource
                     }),
             ])
             ->defaultSort('created_at', 'desc')
-            ->actions([
-                Tables\Actions\Action::make('view_logs')
+            ->recordActions([
+                Action::make('view_logs')
                     ->label('查看')
                     ->icon('heroicon-o-eye')
                     ->url(fn (BlackList $record): string => BlackListLogResource::getUrl('index', [
                         'tableSearch' => $record->ip,
                     ])),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make()->using(fn (BlackList $record): bool => app(AdminBlackListOperations::class)->delete($record)),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()->using(function (DeleteBulkAction $action, Collection $records): void {
+                        $isFirstException = true;
+                        foreach ($records as $record) {
+                            try {
+                                app(AdminBlackListOperations::class)->delete($record);
+                            } catch (Throwable $exception) {
+                                $action->reportBulkProcessingFailure();
+                                if ($isFirstException) {
+                                    report($exception);
+                                    $isFirstException = false;
+                                }
+                            }
+                        }
+                    }),
                 ]),
             ]);
     }
@@ -123,9 +149,9 @@ class BlackListResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListBlackLists::route('/'),
-            'create' => Pages\CreateBlackList::route('/create'),
-            'edit' => Pages\EditBlackList::route('/{record}/edit'),
+            'index' => ListBlackLists::route('/'),
+            'create' => CreateBlackList::route('/create'),
+            'edit' => EditBlackList::route('/{record}/edit'),
         ];
     }
 }

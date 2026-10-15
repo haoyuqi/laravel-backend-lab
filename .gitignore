@@ -17,6 +17,7 @@ yarn-error.log
 /.phpstorm.meta.php
 /public/build
 /public/css/
+/public/fonts/
 /public/js/
 /storage/bing-wallpaper/
 /storage/backup/

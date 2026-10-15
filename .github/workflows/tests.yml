@@ -17,6 +17,62 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  sqlite-tests:
+    name: SQLite tests (PHP 8.4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.4'
+          extensions: redis, pdo, pdo_sqlite
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php-8.4-
+
+      - name: Copy CI environment
+        run: cp .env.ci .env
+
+      - name: Install Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Prepare application directories
+        run: chmod -R 777 storage bootstrap/cache
+
+      - name: Run PHP tests
+        run: php artisan test
+        env:
+          TEST_DB_CONNECTION: sqlite
+          TEST_DB_DATABASE: ':memory:'
+
   php-tests:
     name: PHP tests (PHP ${{ matrix.php-version }}, ${{ matrix.db.name }} ${{ matrix.db.version }})
     runs-on: ubuntu-latest
@@ -25,23 +81,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php-version: ['8.3']
+        php-version: ['8.4']
         db:
-          # SQLite runs in-memory and needs no real DB service; the container
-          # below is only a structural placeholder because `services` applies to
-          # every matrix cell. The suite connects to sqlite `:memory:` instead.
-          - name: sqlite
-            version: 'default'
-            driver: sqlite
-            service-port: 3306
-            image: mysql:8.0
-            env:
-              MYSQL_ALLOW_EMPTY_PASSWORD: yes
-              MYSQL_DATABASE: laravel
-            health-cmd: mysqladmin ping --silent
-            test-db-name: ':memory:'
-            test-db-user: root
-            test-db-password: ''
           - name: mysql
             version: '8.0'
             driver: mysql
@@ -126,15 +167,10 @@ jobs:
           php-version: ${{ matrix.php-version }}
           extensions: redis, pdo, pdo_mysql, pdo_pgsql, pdo_sqlite
           tools: composer:v2
-
-      - name: Setup Node
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: '20'
-          cache: npm
+          coverage: none
 
       - name: Cache Composer downloads
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/composer/files
           key: composer-${{ runner.os }}-php-${{ matrix.php-version }}-${{ hashFiles('**/composer.lock') }}
@@ -146,12 +182,6 @@ jobs:
 
       - name: Install Composer dependencies
         run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-
-      - name: Install npm dependencies
-        run: npm ci --quiet
-
-      - name: Build frontend assets
-        run: npm run build
 
       - name: Generate application key
         run: php artisan key:generate
@@ -170,6 +200,45 @@ jobs:
           TEST_DB_DATABASE: ${{ matrix.db.test-db-name }}
           TEST_DB_USERNAME: ${{ matrix.db.test-db-user }}
           TEST_DB_PASSWORD: ${{ matrix.db.test-db-password }}
+
+  security-checks:
+    name: Security checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Validate Composer configuration
+        run: composer validate --strict
+
+      - name: Install Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Audit Composer dependencies
+        run: composer audit
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit Node dependencies
+        run: npm audit
 
   browser-tests:
     name: Browser tests (Node ${{ matrix.node-version }})
@@ -214,9 +283,10 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           extensions: redis, pdo_pgsql
           tools: composer:v2
+          coverage: none
 
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -226,12 +296,12 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Cache Composer downloads
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/composer/files
-          key: composer-${{ runner.os }}-php-8.3-${{ hashFiles('**/composer.lock') }}
+          key: composer-${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
-            composer-${{ runner.os }}-php-8.3-
+            composer-${{ runner.os }}-php-8.4-
 
       - name: Copy CI environment
         run: cp .env.ci .env
@@ -286,9 +356,12 @@ jobs:
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: password
 
+      - name: Verify Reverb real-time updates
+        run: npm run test:reverb
+
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report
           path: playwright-report/

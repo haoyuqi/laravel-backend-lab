@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Filament\Pages\Auth\Login;
+use Filament\Auth\Pages\Login;
 use Livewire\Livewire;
 use Tests\TestCase;
 

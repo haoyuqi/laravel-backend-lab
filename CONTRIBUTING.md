@@ -51,6 +51,29 @@ feat/* ──► develop ──► master   (routine development)
 feat/* ──► 2.x ──► develop ──► master   (major version refactoring)
 ```
 
+`develop` requires a pull request, an up-to-date branch, successful checks, and
+resolution of review conversations. These rules also apply to administrators;
+do not push directly to `develop`. Reviewer approvals are not mandatory so the
+maintainer can merge their own pull requests after validation.
+
+The required checks match the current `develop` test matrix:
+
+*   `SQLite tests (PHP 8.4)`
+*   `PHP tests (PHP 8.4, postgres 18)`
+*   `Laravel Pint`
+*   `Security checks`
+
+Promote releases through a `develop` → `master` pull request, then create the
+release tag. If `master` has received dependency updates, bring them into
+`develop` through a pull request before promotion. Changing CI check names
+requires updating branch protection in the same rollout.
+
+Dependabot security updates targeting the default branch are an exception to
+the routine PR target. Only Composer and npm patch or minor updates are eligible
+for automatic merging after the required checks pass. Major updates and other
+ecosystems require manual review and merge. See [SECURITY.md](SECURITY.md) for
+the automation policy and private vulnerability reporting process.
+
 ### Commit Messages
 
 Commit messages should follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:

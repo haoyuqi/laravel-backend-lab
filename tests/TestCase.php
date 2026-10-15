@@ -10,6 +10,13 @@ abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication, RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withoutVite();
+    }
+
     /**
      * Validate the target before RefreshDatabase can drop any tables.
      * Laravel's migrate command creates a missing MySQL/PostgreSQL database.
