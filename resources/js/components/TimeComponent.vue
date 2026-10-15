@@ -35,12 +35,14 @@ export default {
     props: ['init_data'],
     mounted() {
         if (window.Echo) {
-            const prefix = import.meta.env.VITE_REDIS_PREFIX || '';
-            window.Echo.channel(prefix + 'push-time')
+            window.Echo.channel('push-time')
                 .listen('PushTimeEvent', (e) => {
                     this.time_list.push(e.time);
                 });
         }
+    },
+    beforeUnmount() {
+        window.Echo?.leaveChannel('push-time');
     }
 }
 </script>

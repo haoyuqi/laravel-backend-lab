@@ -126,7 +126,7 @@ Laravel 管理的缓存、会话、队列和广播不一定要使用 Redis。但
 | 调度器 | 按功能需要 | 每分钟运行 `php artisan schedule:run`，可启用定时备份、清理、统计和维护任务。 |
 | 邮件服务器 | 否 | 开发环境可使用 `MAIL_MAILER=log`；需要发送邮件时再配置 SMTP。 |
 | 对象存储 | 否 | 默认本地文件系统不需要 S3；需要外部存储时再配置 `FILESYSTEM_DRIVER`、`FILESYSTEM_CLOUD` 和 `AWS_*`。 |
-| 实时事件服务器 | 否 | 不使用实时事件时保持 `BROADCAST_CONNECTION=log`；内置 Echo 集成需要 Redis 广播、兼容的 Socket.IO 服务器和匹配的 `VITE_REDIS_PREFIX`。 |
+| 实时事件服务器 | 否 | 不使用实时事件时保持 `BROADCAST_CONNECTION=log` 并留空 `REVERB_APP_KEY`。启用 Laravel Reverb 后可实时更新时间，无需 Redis 广播服务器。 |
 | Telescope 与 Debugbar | 否 | 不希望这些调试工具收集数据或暴露界面时，设置 `TELESCOPE_ENABLED=false` 和 `DEBUGBAR_ENABLED=false`。 |
 
 常用环境变量包括：
@@ -136,7 +136,7 @@ Laravel 管理的缓存、会话、队列和广播不一定要使用 Redis。但
 - `DB_*`：数据库连接；
 - `REDIS_CLIENT`、`REDIS_HOST`、`REDIS_PASSWORD` 和 `REDIS_PORT`：Redis 连接；
 - `CACHE_STORE`、`SESSION_DRIVER` 和 `QUEUE_CONNECTION`：状态与任务存储；
-- `BROADCAST_CONNECTION` 和 `VITE_REDIS_PREFIX`：实时事件；
+- `BROADCAST_CONNECTION`、`REVERB_*` 和 `VITE_REVERB_*`：实时事件；
 - `MAIL_MAILER` 和 `MAIL_*`：邮件发送；
 - `FILESYSTEM_DRIVER`、`FILESYSTEM_CLOUD` 和 `AWS_*`：文件存储；
 - `TELESCOPE_ENABLED` 和 `DEBUGBAR_ENABLED`：可选的应用调试工具；
@@ -208,6 +208,40 @@ npm run dev
 Laravel Mix 命令。
 
 升级现有安装时，请在部署新次版本前阅读 [UPGRADE.md](UPGRADE.md)。
+
+### 本地实时更新时间
+
+`/time` 使用 [Laravel Reverb](https://laravel.com/docs/13.x/reverb) 和 Laravel
+Echo。不开启广播也可以正常显示初始时间。启用实时更新时，先生成本地凭据：
+
+```bash
+php artisan reverb:install
+```
+
+设置 `BROADCAST_CONNECTION=reverb`、`REVERB_HOST=localhost`、
+`REVERB_PORT=8080`、`REVERB_SCHEME=http`，单进程保持
+`REVERB_SCALING_ENABLED=false`。`.env.example` 中的 `VITE_REVERB_*` 引用相应
+配置；不要把 `REVERB_APP_SECRET` 放进任何 `VITE_*` 变量。修改前端连接配置后
+执行 `npm run build`。
+
+在不同终端运行：
+
+```bash
+php artisan reverb:start
+php artisan schedule:work
+# 仅使用异步队列时需要：
+php artisan queue:work --queue=push-time
+```
+
+通过 HTTP 打开 `/time`，等到下一分钟，应无需刷新就新增一行时间。
+`REVERB_SERVER_HOST` / `REVERB_SERVER_PORT` 控制监听地址，
+`REVERB_HOST` / `REVERB_PORT` 控制 Laravel 发送事件的目标。
+`VITE_REVERB_HOST` 必须能被浏览器访问，容器环境中它可能与服务端地址不同。
+
+`npm run test:reverb` 在端口 8000 和 8080 启动独立应用及 Reverb 进程，构建
+测试资源，在 Chromium 中验证真实 WebSocket 推送和刷新后重新订阅。运行前
+应停止占用这些端口的其他进程。测试使用内存数据库和临时 Reverb 凭据。
+测试后运行 `npm run build` 恢复正常前端资源。
 
 ## 测试
 

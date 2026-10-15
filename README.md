@@ -149,7 +149,7 @@ application code change; changing only `.env` is not sufficient.
 | Scheduler | Feature-dependent | Run `php artisan schedule:run` every minute to enable scheduled backups, cleanup, statistics, and maintenance tasks. |
 | Mail server | No | Use `MAIL_MAILER=log` during development, or configure SMTP for outgoing mail. |
 | Object storage | No | The default local filesystem works without S3. Configure `FILESYSTEM_DRIVER`, `FILESYSTEM_CLOUD`, and `AWS_*` only when external storage is needed. |
-| Real-time server | No | Keep `BROADCAST_CONNECTION=log` when real-time events are disabled. The included Echo integration needs Redis broadcasting, a compatible Socket.IO server, and the matching `VITE_REDIS_PREFIX`. |
+| Real-time server | No | Keep `BROADCAST_CONNECTION=log` and `REVERB_APP_KEY` empty when real-time events are disabled. Enable Laravel Reverb for live time updates; no Redis broadcasting server is needed. |
 | Telescope and Debugbar | No | Set `TELESCOPE_ENABLED=false` and `DEBUGBAR_ENABLED=false` when these inspection tools should not collect data or expose their interfaces. |
 
 Important environment options include:
@@ -160,7 +160,7 @@ Important environment options include:
 - `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PASSWORD`, and `REDIS_PORT` for Redis;
 - `CACHE_STORE`, `SESSION_DRIVER`, and `QUEUE_CONNECTION` for state and job
   storage;
-- `BROADCAST_CONNECTION` and `VITE_REDIS_PREFIX` for real-time events;
+- `BROADCAST_CONNECTION`, `REVERB_*`, and `VITE_REVERB_*` for real-time events;
 - `MAIL_MAILER` and `MAIL_*` for outgoing mail;
 - `FILESYSTEM_DRIVER`, `FILESYSTEM_CLOUD`, and `AWS_*` for file storage;
 - `TELESCOPE_ENABLED` and `DEBUGBAR_ENABLED` for optional inspection tools;
@@ -236,6 +236,44 @@ Laravel Mix commands from earlier releases.
 
 For an existing installation, follow [UPGRADE.md](UPGRADE.md) before deploying a
 new minor release.
+
+### Local real-time updates
+
+The `/time` page uses [Laravel Reverb](https://laravel.com/docs/13.x/reverb)
+and Laravel Echo. The application still works without a WebSocket server.
+To enable live updates, generate local credentials:
+
+```bash
+php artisan reverb:install
+```
+
+Set `BROADCAST_CONNECTION=reverb`, `REVERB_HOST=localhost`,
+`REVERB_PORT=8080`, and `REVERB_SCHEME=http`. Keep
+`REVERB_SCALING_ENABLED=false` for a single server. The `VITE_REVERB_*`
+variables in `.env.example` mirror these values. Never put
+`REVERB_APP_SECRET` in a `VITE_*` variable. Rebuild with `npm run build`
+after changing frontend connection settings.
+
+Run these commands in separate terminals:
+
+```bash
+php artisan reverb:start
+php artisan schedule:work
+# Only needed with an asynchronous QUEUE_CONNECTION:
+php artisan queue:work --queue=push-time
+```
+
+Open `/time` over HTTP and wait for the next minute: one new row should arrive
+without refreshing. `REVERB_SERVER_HOST` and `REVERB_SERVER_PORT` control the
+listening socket; `REVERB_HOST` and `REVERB_PORT` tell Laravel where to send
+events. `VITE_REVERB_HOST` must be reachable from the browser; when using
+containers it may differ from the server-side host.
+
+`npm run test:reverb` starts isolated application and Reverb processes on
+ports 8000 and 8080, builds test assets, and verifies real WebSocket delivery
+and resubscription in Chromium. Stop other processes using those ports first.
+It uses an in-memory database and ephemeral Reverb credentials. Rebuild normal
+assets afterwards with `npm run build`.
 
 ## Testing
 
