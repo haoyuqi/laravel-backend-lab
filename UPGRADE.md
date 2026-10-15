@@ -1,6 +1,85 @@
 # Upgrade Guide
 
-## Real-time updates: Socket.IO → Reverb (#137)
+## v2.2.1 to v3.0.0
+
+This is a breaking application release. Laravel remains on 13.x; PHP now
+requires 8.4+, Filament moves from 3 to 5, Livewire from 3 to 4, and Reverb
+replaces Socket.IO/Redis broadcasting. Redis remains required for application
+statistics and blacklist features. Install the committed lock files; do not run
+`composer update` or the Filament upgrade tools on a production deployment.
+
+### Deployment checklist
+
+1. Rehearse on an isolated copy of production data and configuration. Upgrade
+   PHP CLI, web/FPM and worker runtimes to 8.4+, with the extensions required by
+   `composer.lock`. Keep the previous release artifact, environment settings,
+   database backup and Redis recovery point. Older installations must first
+   complete the upgrade procedures for their version below.
+2. Enable maintenance mode (`php artisan down`), pause the scheduler and stop
+   queue workers and other statistics writers. Maintenance mode alone does not
+   stop background jobs. Check for duplicate daily statistics using the SQL
+   below before proceeding; retain the backup even after deduplication.
+3. Deploy v3.0.0 and preserve the existing `.env` and `APP_KEY`. Set
+   `APP_VERSION=3.0.0`. Clear previous compiled configuration with
+   `php artisan optimize:clear`. Install dependencies with
+   `composer install --no-dev --prefer-dist --no-interaction`, followed by
+   `composer check-platform-reqs --no-dev`. Composer hooks discover packages
+   and publish the Filament assets.
+4. Configure Reverb as described below, or explicitly select
+   `BROADCAST_CONNECTION=log` and leave `REVERB_APP_KEY` empty to disable live
+   updates. Keep Reverb's application secret server-side. For HTTPS sites,
+   expose a TLS WebSocket endpoint through your reverse proxy, including
+   WebSocket upgrade headers and the Reverb HTTP publishing endpoints. Point
+   `VITE_REVERB_*` at the browser-accessible endpoint and `REVERB_HOST`,
+   `REVERB_PORT`, `REVERB_SCHEME` at an endpoint reachable by Laravel. The
+   `REVERB_SERVER_*` values control the internal listening socket.
+5. Run `npm ci && npm run build` after Composer installation and finalizing
+   the frontend connection settings. Deploy the complete `public/build`
+   directory and generated Filament assets. Node.js 20 is the CI build target;
+   Node/npm and development dependencies are needed on the build machine,
+   not on a server receiving prebuilt assets.
+6. Review `php artisan migrate:status`, then run `php artisan migrate --force`
+   against the intended application database. From v2.2.1 the new migrations
+   are, in order:
+   - `2026_10_02_000000_make_visitor_statistics_unique.php`: archive duplicate
+     snapshots, retain one snapshot per type/date, and add a unique constraint.
+   - `2026_10_11_000000_create_admin_operation_logs_table.php`: create the
+     audit table without rewriting existing business records.
+   Do not reopen admin access before both migrations succeed. On MySQL, DDL
+   is not covered by a single rollback transaction; inspect any failed
+   migration before retrying instead of assuming the schema is untouched.
+7. Rebuild configuration using your normal deployment cache policy
+   (`php artisan config:cache`). Stop the old Socket.IO service. Configure your
+   process manager to run `php artisan reverb:start` when live updates are
+   enabled, and restart workers on the new code. An asynchronous broadcasting
+   queue must consume `push-time`; retain other existing queue consumers.
+   Resume the once-per-minute scheduler after validating the database.
+8. Verify migration status, daily statistics uniqueness and the duplicate
+   archive. Check `/up`, admin login/logout, the read-only operation log page
+   and a controlled blacklist add/edit/delete, including its audit rows.
+   Verify desktop/mobile admin styling and `/time` live delivery/reconnection
+   when enabled. Check service logs for errors, then run `php artisan up`.
+   Use the deployment's existing controlled access mechanism for checks while
+   maintenance mode is enabled; never publish a maintenance bypass secret.
+
+Do not run installation-only commands such as `key:generate`, database seeds
+or administrator creation against an existing deployment.
+
+### Rollback
+
+Stop writers and background processes again and keep maintenance mode enabled.
+Restore the v2.2.1 artifact, its locked dependencies, frontend assets and
+environment configuration; restore Socket.IO only if it was previously used.
+Clear/rebuild caches and restart the old workers before reopening traffic.
+The new audit and duplicate archive tables may remain to preserve history.
+The statistics unique constraint may also remain, but it does not make the
+old non-idempotent statistics writer safe to retry; keep that writer paused
+until a rollback-compatible plan is verified. Removing the constraint does
+not restore discarded snapshots. Exact data restoration requires the backup
+and reconciliation of writes made since deployment. Never drop audit history
+or reinsert archived rows automatically. See the migration-specific notes below.
+
+### Real-time updates: Socket.IO → Reverb (#137)
 
 The public `push-time` channel, `PushTimeEvent` payload, `push-time` queue,
 and once-per-minute schedule are unchanged. Redis broadcasting and the
@@ -18,11 +97,10 @@ Socket.IO client have been removed. This change requires no database migration.
 4. To leave real-time updates disabled, keep `BROADCAST_CONNECTION=log` and
    `REVERB_APP_KEY` empty, then rebuild assets. The initial time still renders.
 
-Older sections below describe previous releases; their Socket.IO instructions
-are superseded by this section. Production deployment is outside this change's
-local acceptance scope.
+The v2.x sections below describe previous releases; their Socket.IO instructions
+are superseded by the v3.0.0 deployment checklist and this section.
 
-## Admin operation logs (#119)
+### Admin operation logs (#119)
 
 This change adds `admin_operation_logs` and the read-only admin log page. It does
 not migrate or rewrite existing users, visitors, blacklists, or interception
@@ -47,7 +125,7 @@ outside this admin audit coverage.
 
 The new table uses stable resource aliases and nullable string subject IDs;
 authentication events have no subject. Existing action history is not backfilled.
-The migration is new/unreleased: do not edit an already deployed copy. If a
+The migration ships with v3.0.0: do not edit an already deployed copy. If a
 previous development version of this table has been deployed, stop and prepare
 an additive compatibility migration rather than dropping its history.
 
@@ -73,19 +151,26 @@ to preserve history. Rolling back this migration drops only the new table and
 **permanently removes its audit history**. Back it up before any schema rollback.
 No development or production database migration is executed by the tests.
 
-## Filament 3 to 5 upgrade (#136)
+### Filament 3 to 5 upgrade (#136)
 
 This upgrade modernizes the administrative panel by upgrading Filament from `^3.0` to `^5.0` and Livewire from `^3.0` to `^4.0`.
 
-### Preconditions
+The following stages document how the repository's source code was migrated.
+They are for maintainers adapting private customizations on a development
+branch, not steps to run while deploying this release. Deploying the committed
+v3.0.0 code only requires the locked dependency installation and asset build in
+the deployment checklist above. Review private plugins for Filament 5 and
+Livewire 4 compatibility before upgrading.
+
+#### Source migration preconditions
 
 - PHP >= 8.4 and Laravel 13.x.
 - Clean working directory on branch derived from `develop`.
 - Baseline tests passing (`php artisan test`).
 - No custom third-party Filament plugins installed.
-- Ensure Laradock `workspace` or host has Node.js (v20+) and Composer v2 available.
+- Ensure the development environment has Node.js (v20+) and Composer v2 available.
 
-### Stage A: Filament 3 → 4
+#### Stage A: Filament 3 → 4
 
 1. Install upgrade tooling:
    ```bash
@@ -108,7 +193,7 @@ This upgrade modernizes the administrative panel by upgrading Filament from `^3.
    - Login page namespace updated to `Filament\Auth\Pages\Login`.
    - Custom theme created with `php artisan make:filament-theme admin` with Tailwind CSS v4 support, registered via `->viteTheme(...)` in `AdminPanelProvider.php`, and compiled with `npm run build`.
 
-### Stage B: Filament 4 → 5
+#### Stage B: Filament 4 → 5
 
 1. Install upgrade tooling:
    ```bash
@@ -129,7 +214,7 @@ This upgrade modernizes the administrative panel by upgrading Filament from `^3.
    - Widgets verified and compiled with Vite.
    - Run full test suite: `php artisan test`.
 
-### Deployment note
+#### Deployment note
 
 The admin panel now uses a custom Filament theme
 (`resources/css/filament/admin/theme.css`). Deployments must run
@@ -139,9 +224,10 @@ The admin panel now uses a custom Filament theme
 `public/css` are generated by `php artisan filament:upgrade`, which runs on
 `composer install`, and are not tracked in Git.
 
-### Rollback procedure
+#### Source migration rollback
 
-If the upgrade needs to be rolled back before merging or in deployment:
+For an unshipped source migration on a development branch (production rollback
+must follow the release rollback procedure above):
 1. Revert the upgrade commits in Git (review `git status` first; do not discard
    unrelated uncommitted work):
    ```bash
@@ -161,12 +247,12 @@ If the upgrade needs to be rolled back before merging or in deployment:
    php artisan test
    ```
 
-### Known follow-ups
+#### Known follow-ups
 
 - When creating new Filament resources or pages with `php artisan make:filament-*`, use the new Filament 5 schema syntax.
 - Periodically check for Filament minor updates (`composer update filament/filament`).
 
-## Visitor statistics migration (#141)
+### Visitor statistics migration (#141)
 
 Before deploying `2026_10_02_000000_make_visitor_statistics_unique`, back up the
 database and stop the scheduler and all statistics writers. MySQL DDL commits

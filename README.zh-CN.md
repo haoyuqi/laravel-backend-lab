@@ -207,7 +207,9 @@ npm run dev
 使用 `npm run build` 生成优化后的前端资源。请勿继续使用早期版本中已经移除的
 Laravel Mix 命令。
 
-升级现有安装时，请在部署新次版本前阅读 [UPGRADE.md](UPGRADE.md)。
+升级现有安装时，请先阅读 [UPGRADE.md](UPGRADE.md) 中的 v3.0.0 升级流程。
+此主版本要求 PHP 8.4+，升级 Filament 与 Livewire，使用 Reverb 替代 Socket.IO，
+并包含两个数据库迁移。升级后将现有环境中的 `APP_VERSION` 更新为 `3.0.0`。
 
 ### 本地实时更新时间
 

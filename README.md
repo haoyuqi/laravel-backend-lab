@@ -234,8 +234,10 @@ npm run dev
 Create an optimized frontend build with `npm run build`. Do not use the removed
 Laravel Mix commands from earlier releases.
 
-For an existing installation, follow [UPGRADE.md](UPGRADE.md) before deploying a
-new minor release.
+For an existing installation, follow [UPGRADE.md](UPGRADE.md) before deploying
+v3.0.0. This major release requires PHP 8.4+, upgrades Filament and Livewire,
+replaces Socket.IO with Reverb, and includes two database migrations. Set
+`APP_VERSION=3.0.0` in existing environments after upgrading.
 
 ### Local real-time updates
 

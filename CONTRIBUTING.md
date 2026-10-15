@@ -58,9 +58,10 @@ maintainer can merge their own pull requests after validation.
 
 The required checks match the current `develop` test matrix:
 
-*   `PHP tests (PHP 8.4, sqlite default)`
+*   `SQLite tests (PHP 8.4)`
 *   `PHP tests (PHP 8.4, postgres 18)`
 *   `Laravel Pint`
+*   `Security checks`
 
 Promote releases through a `develop` → `master` pull request, then create the
 release tag. If `master` has received dependency updates, bring them into
