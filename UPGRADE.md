@@ -1,5 +1,30 @@
 # Upgrade Guide
 
+## v3.0.1 to v3.0.2
+
+This security cleanup removes the unused `public/vendor/laravel-admin/` assets
+left behind after the Filament migration, including the PJAX and Bootstrap
+Slider scripts flagged by CodeQL. It adds no database migration and changes no
+application dependencies.
+
+1. Deploy the new release artifact. If deploying by copying files over an
+   existing installation, explicitly remove the old
+   `public/vendor/laravel-admin/` directory from every web server and shared
+   public volume. A copy-only deployment can leave the vulnerable scripts
+   accessible. Preserve the active Horizon, Telescope, and Filament assets.
+2. Purge cached copies of the removed paths from any CDN or reverse-proxy
+   cache. Verify that the two flagged scripts, `jquery-pjax/jquery.pjax.js` and
+   `AdminLTE/plugins/bootstrap-slider/bootstrap-slider.js`, are no longer served
+   under `/vendor/laravel-admin/`.
+3. Preserve `.env` and `APP_KEY`, set `APP_VERSION=3.0.2`, rebuild configuration
+   using the deployment's normal cache policy, and verify admin login and
+   the public pages. Use the existing locked dependency/build process when
+   preparing the release artifact.
+
+Earlier installations must also complete the applicable upgrade steps below.
+Rolling back to an older artifact can restore the removed scripts and their
+security findings; prefer keeping this unused directory removed.
+
 ## v3.0.0 to v3.0.1
 
 This update adds `2026_10_15_000000_harden_request_logs.php`. It widens both
