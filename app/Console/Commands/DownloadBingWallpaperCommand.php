@@ -41,10 +41,19 @@ class DownloadBingWallpaperCommand extends Command
         $file_path = storage_path('bing-wallpaper/'.$today->year.'/'.$today->format('m'));
         $file_name = $today->toDateString().'.png';
 
-        $res = $this->bingWallpaper->save($this->bingWallpaper->download(), $file_path, $file_name);
+        try {
+            $res = $this->bingWallpaper->save($this->bingWallpaper->download(), $file_path, $file_name);
+        } catch (\Throwable $exception) {
+            logger()->warning('Wallpaper download failed.', ['exception_class' => $exception::class]);
+            $this->error('Wallpaper download failed.');
+
+            return Command::FAILURE;
+        }
 
         $info = 'Download bing wallpaper '.$file_name.' '.($res ? 'success' : 'failed').'.';
         info($info);
         $this->info($info);
+
+        return $res ? Command::SUCCESS : Command::FAILURE;
     }
 }

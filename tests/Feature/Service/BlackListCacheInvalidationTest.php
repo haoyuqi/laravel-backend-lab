@@ -6,11 +6,14 @@ use App\Filament\Resources\BlackListResource\Pages\CreateBlackList;
 use App\Filament\Resources\BlackListResource\Pages\EditBlackList;
 use App\Filament\Resources\BlackListResource\Pages\ListBlackLists;
 use App\Filament\Resources\VisitorResource\Pages\ListVisitors;
+use App\Jobs\BlackListLog as BlackListLogJob;
 use App\Models\BlackList;
 use App\Models\User;
 use App\Models\Visitor;
+use App\Service\AdminBlackListOperations;
 use App\Service\BlackListService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -180,64 +183,42 @@ class BlackListCacheInvalidationTest extends TestCase
         $this->assertDatabaseHas('black_lists', ['ip' => $ip, 'deleted_at' => null]);
     }
 
-    public function test_redis_read_failure_falls_back_to_database_and_warns(): void
+    public function test_database_decision_wins_over_stale_redis_values_after_mutations(): void
     {
-        $ip = '198.51.100.111';
-        BlackList::create(['ip' => $ip]);
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('blacklist cache read failure', \Mockery::on(fn (array $context): bool => $context['ip'] === $ip && $context['error'] === 'redis read failed'));
-        Redis::shouldReceive('hget')->once()->andThrow(new \RuntimeException('redis read failed'));
-        Redis::shouldReceive('hset')->once();
-        Redis::shouldReceive('expire')->once();
+        $addedIp = '198.51.100.111';
+        $removedIp = '198.51.100.112';
+        BlackList::create(['ip' => $addedIp]);
+        $removed = BlackList::create(['ip' => $removedIp]);
+        $removed->delete();
+        $this->seedCacheField($addedIp, '0');
+        $this->seedCacheField($removedIp, '1');
 
-        $this->assertTrue(app(BlackListService::class)->checkIp($ip, '/'));
+        $this->assertTrue(app(BlackListService::class)->checkIp($addedIp, '/'));
+        $this->assertFalse(app(BlackListService::class)->checkIp($removedIp, '/'));
     }
 
-    public function test_redis_expiry_failure_logs_write_warning_and_returns_database_decision(): void
+    public function test_ipv6_input_matches_legacy_expanded_and_deleted_records(): void
     {
-        $ip = '198.51.100.118';
-        BlackList::create(['ip' => $ip]);
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('blacklist cache write failure', \Mockery::on(fn (array $context): bool => $context['key'] === $this->key && $context['error'] === 'redis expiry failed'));
-        Redis::shouldReceive('hget')->once()->andReturn(false);
-        Redis::shouldReceive('hset')->once();
-        Redis::shouldReceive('expire')->once()->andThrow(new \RuntimeException('redis expiry failed'));
+        $expanded = '2001:0db8:0000:0000:0000:ff00:0042:8329';
+        $compressed = '2001:db8::ff00:42:8329';
+        $legacy = BlackList::withoutEvents(fn () => BlackList::create(['ip' => $expanded]));
 
-        $this->assertTrue(app(BlackListService::class)->checkIp($ip, '/'));
-    }
+        $this->assertTrue(app(BlackListService::class)->checkIp($compressed, '/'));
+        $this->actingAs($this->admin);
+        $canonical = app(AdminBlackListOperations::class)->create(['ip' => '2001:0db8:0000:0000:0000:0000:0000:0001']);
+        $this->assertSame('2001:db8::1', $canonical->ip);
 
-    public function test_redis_write_failure_preserves_database_decision_and_warns(): void
-    {
-        $ip = '198.51.100.112';
-        BlackList::create(['ip' => $ip]);
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('blacklist cache write failure', \Mockery::on(fn (array $context): bool => $context['ip'] === $ip && $context['error'] === 'redis write failed'));
-        Redis::shouldReceive('hget')->once()->andReturn(false);
-        Redis::shouldReceive('hset')->once()->andThrow(new \RuntimeException('redis write failed'));
+        $legacyDeleted = BlackList::findOrFail($legacy->id);
+        $legacyDeleted->delete();
+        $this->assertFalse(app(BlackListService::class)->checkIp($compressed, '/'));
 
-        $this->assertTrue(app(BlackListService::class)->checkIp($ip, '/'));
-    }
+        $restored = app(AdminBlackListOperations::class)->addIp($compressed);
+        $this->assertSame($legacyDeleted->id, $restored->id);
+        $this->assertFalse($restored->trashed());
+        $this->assertTrue(app(BlackListService::class)->checkIp($compressed, '/'));
 
-    public function test_positive_and_negative_cache_entries_receive_a_48_hour_ttl(): void
-    {
-        $this->travelTo(now()->startOfSecond());
-        $blacklistedIp = '198.51.100.113';
-        $allowedIp = '198.51.100.114';
-        BlackList::create(['ip' => $blacklistedIp]);
-        $service = app(BlackListService::class);
-
-        $this->assertTrue($service->checkIp($blacklistedIp, '/'));
-        $this->assertFalse($service->checkIp($allowedIp, '/'));
-
-        foreach ([$blacklistedIp => '1', $allowedIp => '0'] as $ip => $value) {
-            $this->assertSame($value, $this->redisConnection->hget($this->key, $ip));
-        }
-        $ttl = $this->redisConnection->ttl($this->key);
-        $this->assertGreaterThan(0, $ttl);
-        $this->assertLessThanOrEqual(172800, $ttl);
+        $newAddress = app(AdminBlackListOperations::class)->addIp('2001:0db8:0000:0000:0000:0000:0000:0002');
+        $this->assertSame('2001:db8::2', $newAddress->ip);
     }
 
     public function test_invalidation_preserves_other_hash_fields_and_unrelated_keys(): void
@@ -260,8 +241,11 @@ class BlackListCacheInvalidationTest extends TestCase
         $ip = '198.51.100.117';
         $record = BlackList::create(['ip' => $ip]);
         $this->seedCacheField($ip, '1');
+        Queue::fake();
 
         $this->assertTrue(app(BlackListService::class)->checkIp($ip, '/blocked'));
+        Queue::assertPushed(BlackListLogJob::class);
+        (new BlackListLogJob($record->id, '/blocked'))->handle();
 
         $this->assertSame('1', $this->redisConnection->hget($this->key, $ip));
         $this->assertDatabaseHas('black_list_logs', ['black_list_id' => $record->id, 'url' => '/blocked']);

@@ -2,143 +2,49 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\CountPvAndUv;
+use App\Http\Middleware\RecordVisitors;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class SortControllerTest extends TestCase
 {
-    public function test_bubble_sort(): void
+    protected function setUp(): void
     {
-        $response = $this->get('/sort/bubble');
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $string = chr(mt_rand(97, 122));
-        $response = $this->get('/sort/bubble?count='.$string);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = 0;
-        $response = $this->get('/sort/bubble?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = mt_rand(10001, mt_getrandmax());
-        $response = $this->get('/sort/bubble?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = mt_rand(1, 10000);
-        $arr = range(1, $count);
-        $response = $this->get('/sort/bubble?count='.$count);
-        $response->assertSuccessful()
-            ->assertJsonCount($count)
-            ->assertExactJson($arr)
-            ->assertSeeTextInOrder($arr);
+        parent::setUp();
+        config(['demo.enabled' => true]);
+        $this->withoutMiddleware([RecordVisitors::class, CountPvAndUv::class]);
     }
 
-    public function test_quick_sort(): void
+    public static function algorithms(): array
     {
-        $response = $this->get('/sort/quick');
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $string = chr(mt_rand(97, 122));
-        $response = $this->get('/sort/quick?count='.$string);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = 0;
-        $response = $this->get('/sort/quick?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = mt_rand(10001, mt_getrandmax());
-        $response = $this->get('/sort/quick?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = mt_rand(1, 10000);
-        $arr = range(1, $count);
-        $response = $this->get('/sort/quick?count='.$count);
-        $response->assertSuccessful()
-            ->assertJsonCount($count)
-            ->assertExactJson($arr)
-            ->assertSeeTextInOrder($arr);
+        return [['bubble'], ['quick'], ['select'], ['insert']];
     }
 
-    public function test_select_sort(): void
+    #[DataProvider('algorithms')]
+    public function test_sort_validates_input_and_returns_sorted_values(string $algorithm): void
     {
-        $response = $this->get('/sort/select');
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
+        foreach (['', '?count=invalid', '?count=0', '?count=1001'] as $query) {
+            $this->get('/sort/'.$algorithm.$query)
+                ->assertRedirect('/error')->assertSessionHasErrors(['count']);
+        }
 
-        $string = chr(mt_rand(97, 122));
-        $response = $this->get('/sort/select?count='.$string);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = 0;
-        $response = $this->get('/sort/select?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = mt_rand(10001, mt_getrandmax());
-        $response = $this->get('/sort/select?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = mt_rand(1, 10000);
-        $arr = range(1, $count);
-        $response = $this->get('/sort/select?count='.$count);
-        $response->assertSuccessful()
-            ->assertJsonCount($count)
-            ->assertExactJson($arr)
-            ->assertSeeTextInOrder($arr);
+        $this->get('/sort/'.$algorithm.'?count=50')
+            ->assertOk()->assertExactJson(range(1, 50));
     }
 
-    public function test_insert_sort(): void
+    public function test_demo_is_disabled_by_default_configuration(): void
     {
-        $response = $this->get('/sort/insert');
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
+        config(['demo.enabled' => false]);
+        $this->get('/sort/bubble?count=10')->assertNotFound();
+    }
 
-        $string = chr(mt_rand(97, 122));
-        $response = $this->get('/sort/insert?count='.$string);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = 0;
-        $response = $this->get('/sort/insert?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = mt_rand(10001, mt_getrandmax());
-        $response = $this->get('/sort/insert?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = mt_rand(1, 10000);
-        $arr = range(1, $count);
-        $response = $this->get('/sort/insert?count='.$count);
-        $response->assertSuccessful()
-            ->assertJsonCount($count)
-            ->assertExactJson($arr)
-            ->assertSeeTextInOrder($arr);
+    public function test_demo_requests_share_a_per_ip_rate_limit(): void
+    {
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.125']);
+        for ($i = 0; $i < 10; $i++) {
+            $this->get('/sort/quick?count=1')->assertOk();
+        }
+        $this->get('/sort/bubble?count=1')->assertStatus(429);
     }
 }

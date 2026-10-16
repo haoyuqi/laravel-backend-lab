@@ -40,11 +40,10 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     protected function hideSensitiveRequestDetails()
     {
-        if ($this->app->environment('local')) {
-            return;
-        }
-
-        Telescope::hideRequestParameters(['_token']);
+        // Livewire snapshots and dotted update keys may contain authentication data.
+        // Redact the whole component envelope, including in local environments.
+        Telescope::hideRequestParameters(['_token', 'components']);
+        Telescope::hideResponseParameters(['components']);
 
         Telescope::hideRequestHeaders([
             'cookie',

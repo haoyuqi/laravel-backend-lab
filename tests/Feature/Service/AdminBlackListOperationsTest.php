@@ -7,7 +7,7 @@ use App\Models\BlackList;
 use App\Models\User;
 use App\Service\AdminBlackListOperations;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 use LogicException;
@@ -117,11 +117,54 @@ class AdminBlackListOperationsTest extends TestCase
     public function test_duplicate_ip_fails_without_false_audit(): void
     {
         BlackList::create(['ip' => '192.0.2.10']);
-        $this->expectException(QueryException::class);
+        $this->expectException(ValidationException::class);
         try {
             $this->operations->create(['ip' => '192.0.2.10']);
         } finally {
             $this->assertDatabaseCount('black_lists', 1);
+            $this->assertDatabaseCount('admin_operation_logs', 0);
+        }
+    }
+
+    public function test_canonical_ipv6_duplicate_of_legacy_row_is_rejected_on_create_and_update(): void
+    {
+        $legacy = BlackList::withoutEvents(fn () => BlackList::query()->create(['ip' => '2001:0db8:0000:0000:0000:0000:0000:0001']));
+        $other = BlackList::create(['ip' => '192.0.2.13']);
+
+        try {
+            $this->operations->create(['ip' => '2001:db8::1']);
+            $this->fail('Equivalent IPv6 address must be rejected.');
+        } catch (ValidationException) {
+            $this->assertDatabaseCount('black_lists', 2);
+            $this->assertDatabaseCount('admin_operation_logs', 0);
+        }
+
+        try {
+            $this->operations->update($other, ['ip' => '2001:db8::1']);
+            $this->fail('Equivalent IPv6 address must be rejected during update.');
+        } catch (ValidationException) {
+            $this->assertSame('192.0.2.13', $other->fresh()->ip);
+            $this->assertSame($legacy->id, BlackList::findOrFail($legacy->id)->id);
+            $this->assertDatabaseCount('admin_operation_logs', 0);
+        }
+    }
+
+    public function test_unique_index_race_is_reported_as_ip_validation_error(): void
+    {
+        $ip = '192.0.2.14';
+        Event::listen('eloquent.creating: '.BlackList::class, function () use ($ip): void {
+            DB::table('black_lists')->insert([
+                'ip' => $ip,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        try {
+            $this->operations->create(['ip' => $ip]);
+            $this->fail('A concurrent unique-key conflict must be reported as a validation error.');
+        } catch (ValidationException) {
+            $this->assertDatabaseCount('black_lists', 0);
             $this->assertDatabaseCount('admin_operation_logs', 0);
         }
     }

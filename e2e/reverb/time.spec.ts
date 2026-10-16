@@ -17,5 +17,14 @@ test('time updates arrive through a real Reverb WebSocket and survive reload', a
 
     await expect(page.locator('table tbody tr')).toHaveCount(2);
     await expect(page.locator('table tbody td').last()).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+
+    if (round === 0) {
+      execFileSync('php', ['artisan', 'tinker', '--execute=for ($i = 0; $i < 55; $i++) { event(new App\\Events\\PushTimeEvent); }'], {
+        env: process.env,
+        stdio: 'pipe',
+      });
+
+      await expect(page.locator('table tbody tr')).toHaveCount(50);
+    }
   }
 });

@@ -26,7 +26,7 @@ class BlackListLogsAddIndex extends Migration
     public function down()
     {
         Schema::table('black_list_logs', function (Blueprint $table) {
-            $table->dropIndex('black_list_id');
+            $table->dropIndex(['black_list_id']);
         });
     }
 }

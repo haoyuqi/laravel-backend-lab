@@ -15,15 +15,15 @@ Schedule::call(function () {
 })->everyMinute();
 
 // Database and application backup
-Schedule::command('backup:run')->dailyAt('01:00');
-Schedule::command('backup:clean')->dailyAt('01:10');
-Schedule::command('backup:monitor')->dailyAt('01:20');
+Schedule::command('backup:run')->dailyAt('01:00')->withoutOverlapping(120);
+Schedule::command('backup:clean')->dailyAt('01:10')->withoutOverlapping(120);
+Schedule::command('backup:monitor')->dailyAt('01:20')->withoutOverlapping(120);
 
 // Visits and logs cleanup
-Schedule::command('save:visits-count')->dailyAt('00:05');
-Schedule::command('clear:files')->dailyAt('00:10');
+Schedule::command('save:visits-count')->dailyAt('00:05')->withoutOverlapping(30);
+Schedule::command('clear:files')->dailyAt('00:10')->withoutOverlapping(30);
 Schedule::command('delete:redis-cache black_list_'.now()->subDay()->toDateString())->dailyAt('00:20');
-Schedule::command('telescope:prune --hours=72')->dailyAt('00:30');
-Schedule::command('download:bing-wallpaper')->dailyAt('05:00');
+Schedule::command('telescope:prune --hours=72')->dailyAt('00:30')->withoutOverlapping(30);
+Schedule::command('download:bing-wallpaper')->dailyAt('05:00')->withoutOverlapping(5);
 Schedule::command('delete:redis-cache black_list_'.now()->toDateString())->twiceDaily(7, 13);
 Schedule::command('geoip:clear')->everySixHours();

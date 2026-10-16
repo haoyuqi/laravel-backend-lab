@@ -4,7 +4,9 @@ namespace App\Http\Middleware;
 
 use App\Jobs\RecordVisitors as RecordVisitorsJob;
 use App\Service\BlackListService;
+use App\Support\IpAddress;
 use App\Support\RedisFailureLogger;
+use App\Support\SafeRequestUrl;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,7 +25,11 @@ class RecordVisitors
 
         if (! app()->isLocal()) {
             $ip = $request->getClientIp();
-            $requestUrl = $request->getRequestUri();
+            if ($ip === null) {
+                return $next($request);
+            }
+            $ip = IpAddress::normalize($ip);
+            $requestUrl = SafeRequestUrl::sanitize($request->getRequestUri());
             $blackListService = app()->make(BlackListService::class);
 
             if ($blackListService->checkIp($ip, $requestUrl)) {
@@ -36,7 +42,7 @@ class RecordVisitors
                 RedisFailureLogger::report('visitor recording dispatch failure', [
                     'ip' => $ip,
                     'url' => $requestUrl,
-                    'error' => $e->getMessage(),
+                    'exception_class' => $e::class,
                 ]);
             }
         }

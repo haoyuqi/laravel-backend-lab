@@ -18,6 +18,8 @@ class QueueJob implements ShouldQueue
     // 超时
     public $timeout = 120;
 
+    public $failOnTimeout = true;
+
     protected $count;
 
     /**
