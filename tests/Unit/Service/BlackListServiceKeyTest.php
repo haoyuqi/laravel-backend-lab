@@ -50,82 +50,12 @@ class BlackListServiceKeyTest extends TestCase
         $service->forgetIp('1.2.3.4');
     }
 
-    public function test_touch_ttl_calls_expire_with_48_hours(): void
-    {
-        $key = 'black_list_'.now()->toDateString();
-
-        Redis::shouldReceive('expire')->once()->with($key, 172800);
-
-        $this->app->make(BlackListService::class)->touchTtl($key);
-    }
-
-    public function test_check_ip_single_hget_read_path(): void
-    {
-        Redis::shouldReceive('hget')
-            ->once()
-            ->with('black_list_'.now()->toDateString(), '1.2.3.4')
-            ->andReturn('1');
-        Redis::shouldNotReceive('hexists');
-
-        $result = $this->app->make(BlackListService::class)->checkIp('1.2.3.4', '/');
-
-        $this->assertTrue($result);
-    }
-
-    public function test_check_ip_cache_miss_queries_db_and_writes_with_ttl(): void
-    {
-        BlackList::withoutEvents(fn () => BlackList::create(['ip' => '5.6.7.8']));
-        $key = 'black_list_'.now()->toDateString();
-
-        Redis::shouldReceive('hget')->once()->andReturn(null);
-        Redis::shouldReceive('hset')->once()->with($key, '5.6.7.8', 1);
-        Redis::shouldReceive('expire')->once()->with($key, 172800);
-
-        $result = $this->app->make(BlackListService::class)->checkIp('5.6.7.8', '/');
-
-        $this->assertTrue($result);
-    }
-
-    public function test_check_ip_false_hget_representation_is_treated_as_cache_miss(): void
-    {
-        BlackList::withoutEvents(fn () => BlackList::create(['ip' => '4.3.2.1']));
-        $key = 'black_list_'.now()->toDateString();
-
-        Redis::shouldReceive('hget')->once()->andReturn(false);
-        Redis::shouldReceive('hset')->once()->with($key, '4.3.2.1', 1);
-        Redis::shouldReceive('expire')->once()->with($key, 172800);
-
-        $this->assertTrue($this->app->make(BlackListService::class)->checkIp('4.3.2.1', '/'));
-    }
-
-    public function test_check_ip_read_failure_falls_back_to_db(): void
-    {
-        BlackList::withoutEvents(fn () => BlackList::create(['ip' => '9.9.9.9']));
-
-        Redis::shouldReceive('hget')->once()->andThrow(new Exception('redis down'));
-        Redis::shouldReceive('hset')->once();
-        Redis::shouldReceive('expire')->once();
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('blacklist cache read failure', \Mockery::any());
-
-        $result = $this->app->make(BlackListService::class)->checkIp('9.9.9.9', '/');
-
-        $this->assertTrue($result);
-    }
-
-    public function test_check_ip_write_failure_returns_db_result_and_logs(): void
+    public function test_check_ip_uses_database_without_redis_enforcement(): void
     {
         BlackList::withoutEvents(fn () => BlackList::create(['ip' => '8.8.4.4']));
+        Redis::shouldReceive('hget')->never();
+        Redis::shouldReceive('hset')->never();
 
-        Redis::shouldReceive('hget')->once()->andReturn(null);
-        Redis::shouldReceive('hset')->once()->andThrow(new Exception('redis down'));
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('blacklist cache write failure', \Mockery::any());
-
-        $result = $this->app->make(BlackListService::class)->checkIp('8.8.4.4', '/');
-
-        $this->assertTrue($result);
+        $this->assertTrue($this->app->make(BlackListService::class)->checkIp('8.8.4.4', '/'));
     }
 }

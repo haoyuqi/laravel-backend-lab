@@ -106,13 +106,13 @@ php artisan admin-operation-logs:prune --days=365
 
 - PHP 8.4 或更高版本，以及 `composer.lock` 所要求的 PHP 扩展；
 - Composer 2；
-- Node.js 20 和 npm；
+- Node.js 24 LTS 和 npm；
 - SQLite、MySQL 或 PostgreSQL，用于持久化应用数据；
-- Redis，用于访客统计、黑名单缓存和相关定时任务；
+- Redis，用于访客统计和相关定时任务；
 - 生产环境中需要 Laravel 支持的 Web 服务器。
 
 Laravel 管理的缓存、会话、队列和广播不一定要使用 Redis。但是当前应用的访客计数、
-黑名单检查、仪表盘统计和维护命令会直接访问 Redis，因此 Redis 服务本身仍然是必需的。
+仪表盘统计和维护命令会直接访问 Redis，因此 Redis 服务本身仍然是必需的。
 如果要让 Redis 完全可选，需要修改应用代码，仅修改 `.env` 并不足够。
 
 ## 服务与配置
@@ -120,7 +120,7 @@ Laravel 管理的缓存、会话、队列和广播不一定要使用 Redis。但
 | 服务 | 是否必需 | 配置与替代方案 |
 | --- | --- | --- |
 | 数据库 | 是 | 设置 `DB_CONNECTION` 和对应的 `DB_*`。支持 SQLite、MySQL 和 PostgreSQL。 |
-| Redis | 是 | 访客统计、黑名单检查、仪表盘组件和定时清理会直接使用。可以通过 `REDIS_*` 修改主机、端口、凭据、客户端和数据库编号。 |
+| Redis | 是 | 访客统计、仪表盘组件和定时清理会直接使用。黑名单拦截直接读取数据库，避免旧缓存改变判断。可以通过 `REDIS_*` 修改主机、端口、凭据、客户端和数据库编号。 |
 | 队列 Worker | 否 | 仅异步队列连接需要。`sync` 驱动会在当前请求中直接处理任务。 |
 | Horizon | 否 | 必须同时使用 Redis 和 Redis 队列；使用 `sync` 或非 Redis 队列时不需要。 |
 | 调度器 | 按功能需要 | 每分钟运行 `php artisan schedule:run`，可启用定时备份、清理、统计和维护任务。 |
@@ -141,6 +141,22 @@ Laravel 管理的缓存、会话、队列和广播不一定要使用 Redis。但
 - `FILESYSTEM_DRIVER`、`FILESYSTEM_CLOUD` 和 `AWS_*`：文件存储；
 - `TELESCOPE_ENABLED` 和 `DEBUGBAR_ENABLED`：可选的应用调试工具；
 - `TEST_DB_*`：独立的非默认测试数据库。
+
+队列和排序演示接口默认关闭，确需公开时设置 `DEMO_ROUTES_ENABLED=true`。
+接口按 IP 共用每分钟 10 次的限制，单次最多处理 1,000 项。创建演示任务改用
+`POST /queue/create`，并提交正常的 Web CSRF token。
+
+部署在反向代理后时，将 `TRUSTED_PROXIES` 设置为代理地址或 CIDR 范围，多个值用
+英文逗号分隔。只信任自己控制的代理，其他地址发送的转发客户端头不会被采信。
+
+备份使用 `DB_CONNECTION` 指定的连接。配置单个有效的 `BACKUP_NOTIFICATION_EMAIL`
+和邮件发送服务后，才会启用备份失败通知。默认备份仍保存在本地；应定期将备份恢复到
+隔离数据库，验证恢复能力。任务锁防止同一命令重复运行；多服务器部署需使用共享锁
+存储，并指定一台服务器运行调度器。
+
+新的访客与拦截日志仅保存请求路径，移除查询参数和片段，最长 2,048 字节。
+历史日志不会自动重写。Telescope 在本地环境也会隐藏 Livewire 组件请求和响应内容，
+避免登录信息随组件快照保存。
 
 ## 安装
 
@@ -178,7 +194,7 @@ QUEUE_CONNECTION=sync
 BROADCAST_CONNECTION=log
 ```
 
-这些配置可以减少 Redis 的用途，但无法消除访客统计和黑名单功能对 Redis 的直接调用。
+这些配置可以减少 Redis 的用途，但无法消除访客统计功能对 Redis 的直接调用。
 
 完成应用初始化：
 

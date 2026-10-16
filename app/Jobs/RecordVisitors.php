@@ -4,12 +4,14 @@ namespace App\Jobs;
 
 use App\Libraries\GetCityByIp\GetCityByIpAbstract;
 use App\Models\Visitor;
-use App\Models\VisitorLog;
+use App\Support\SafeRequestUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class RecordVisitors implements ShouldQueue
 {
@@ -21,9 +23,13 @@ class RecordVisitors implements ShouldQueue
     // 超时
     public $timeout = 120;
 
+    public $failOnTimeout = true;
+
     protected $ip;
 
     protected $url;
+
+    protected ?string $eventId = null;
 
     /**
      * Create a new job instance.
@@ -34,7 +40,8 @@ class RecordVisitors implements ShouldQueue
     {
         $this->queue = 'record-visitor';
         $this->ip = $ip;
-        $this->url = $url;
+        $this->url = SafeRequestUrl::sanitize((string) $url);
+        $this->eventId = (string) Str::uuid();
     }
 
     /**
@@ -44,14 +51,46 @@ class RecordVisitors implements ShouldQueue
      */
     public function handle(GetCityByIpAbstract $getCityByIp)
     {
-        $visitor = Visitor::firstOrCreate(
-            ['ip' => $this->ip],
-            ['city' => $getCityByIp->getCity($this->ip)]
+        // Sanitize again because already-queued payloads may contain full URLs.
+        $this->url = SafeRequestUrl::sanitize((string) $this->url);
+
+        // Preserve logs for soft-deleted visitors (the IP remains unique), and
+        // avoid doing a GeoIP lookup unless a visitor row must be created.
+        $visitor = Visitor::withTrashed()->where('ip', $this->ip)->first();
+
+        if (! $visitor) {
+            $city = '';
+
+            try {
+                $city = (string) $getCityByIp->getCity($this->ip);
+            } catch (\Throwable $exception) {
+                Log::warning('visitor geoip lookup failed', [
+                    'exception_class' => $exception::class,
+                ]);
+            }
+
+            // createOrFirst handles a concurrent insert safely, including on
+            // databases where a failed insert would otherwise poison a transaction.
+            $visitor = Visitor::withTrashed()->firstOrCreate(
+                ['ip' => $this->ip],
+                ['city' => $city]
+            );
+        }
+
+        $visitorLog = $visitor->logs()->withTrashed()->firstOrCreate(
+            ['event_id' => $this->eventId()],
+            ['url' => $this->url]
         );
 
-        $visitor_log = new VisitorLog;
-        $visitor_log->url = $this->url;
+        if ((int) $visitorLog->visitor_id !== (int) $visitor->id) {
+            throw new \RuntimeException('Visitor log event is already associated with another visitor.');
+        }
+    }
 
-        $visitor->logs()->save($visitor_log);
+    private function eventId(): string
+    {
+        // Legacy queued payloads predate event IDs. Laravel's queue UUID stays
+        // stable across retries, so it can provide the same dedupe key.
+        return $this->eventId ??= (string) ($this->job?->uuid() ?? Str::uuid());
     }
 }

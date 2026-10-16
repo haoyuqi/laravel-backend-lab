@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 // Config also loads in workers; reuse the parent process's ephemeral secret.
 process.env.REVERB_E2E_SECRET ??= randomBytes(32).toString('hex');
+const reverbPort = process.env.REVERB_E2E_PORT || '8080';
 // Both servers and the event-dispatching test share ephemeral credentials.
 const env = {
   ...process.env,
@@ -21,15 +22,15 @@ const env = {
   REVERB_APP_KEY: 'reverb-e2e-public-key',
   REVERB_APP_SECRET: process.env.REVERB_E2E_SECRET,
   REVERB_HOST: '127.0.0.1',
-  REVERB_PORT: '8080',
+  REVERB_PORT: reverbPort,
   REVERB_SCHEME: 'http',
   REVERB_SERVER_HOST: '0.0.0.0',
-  REVERB_SERVER_PORT: '8080',
+  REVERB_SERVER_PORT: reverbPort,
   REVERB_SCALING_ENABLED: 'false',
   REDIS_DB: '15',
   VITE_REVERB_APP_KEY: 'reverb-e2e-public-key',
   VITE_REVERB_HOST: '127.0.0.1',
-  VITE_REVERB_PORT: '8080',
+  VITE_REVERB_PORT: reverbPort,
   VITE_REVERB_SCHEME: 'http',
 };
 Object.assign(process.env, env);
@@ -43,7 +44,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'php artisan reverb:start',
-      port: 8080,
+      port: Number(reverbPort),
       env,
       reuseExistingServer: false,
     },

@@ -3,8 +3,9 @@
 namespace App\Filament\Widgets;
 
 use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 
 class HealthStatusWidget extends Widget
 {
@@ -107,13 +108,28 @@ class HealthStatusWidget extends Widget
 
     protected function checkCacheHealth(): array
     {
-        $driver = (string) config('cache.default', 'redis');
+        $store = (string) config('cache.default', 'file');
+        $driver = (string) config("cache.stores.{$store}.driver", $store);
+        $key = 'health-check:'.Str::uuid();
+        $value = Str::random(32);
+        $healthy = false;
+        $start = microtime(true);
 
         try {
-            $start = microtime(true);
-            if ($driver === 'redis') {
-                Redis::ping();
+            $cache = Cache::store($store);
+            $cache->put($key, $value, 10);
+            $healthy = $cache->get($key) === $value;
+        } catch (\Throwable) {
+            // A failed cache write/read is reported as unhealthy below.
+        } finally {
+            try {
+                Cache::store($store)->forget($key);
+            } catch (\Throwable) {
+                // The short TTL limits residue if the store is unavailable.
             }
+        }
+
+        if ($healthy) {
             $latency = round((microtime(true) - $start) * 1000, 1);
 
             return [
@@ -123,15 +139,15 @@ class HealthStatusWidget extends Widget
                 'latency' => $latency.'ms',
                 'label' => '运行正常',
             ];
-        } catch (\Throwable) {
-            return [
-                'status' => 'unhealthy',
-                'name' => ucfirst($driver),
-                'driver' => $driver,
-                'latency' => '--',
-                'label' => '服务异常',
-            ];
         }
+
+        return [
+            'status' => 'unhealthy',
+            'name' => ucfirst($driver),
+            'driver' => $driver,
+            'latency' => '--',
+            'label' => '服务异常',
+        ];
     }
 
     protected function getTimezoneStatus(): array

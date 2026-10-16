@@ -2,43 +2,40 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\CountPvAndUv;
+use App\Http\Middleware\RecordVisitors;
+use App\Jobs\QueueJob;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class QueueControllerTest extends TestCase
 {
-    /**
-     * A basic feature test example.
-     */
-    public function test_create(): void
+    protected function setUp(): void
     {
-        $response = $this->get('/queue/create');
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
+        parent::setUp();
+        config(['demo.enabled' => true]);
+        $this->withoutMiddleware([RecordVisitors::class, CountPvAndUv::class]);
+        Queue::fake();
+    }
 
-        $string = chr(mt_rand(97, 122));
-        $response = $this->get('/queue/create?count='.$string);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
+    public function test_create_requires_post_and_validates_workload(): void
+    {
+        $this->get('/queue/create?count=10')->assertStatus(405);
+        foreach ([[], ['count' => 'invalid'], ['count' => 0], ['count' => 1001]] as $input) {
+            $this->post('/queue/create', $input)
+                ->assertRedirect('/error')->assertSessionHasErrors(['count']);
+        }
+        Queue::assertNothingPushed();
 
-        $count = 0;
-        $response = $this->get('/queue/create?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
+        $this->post('/queue/create', ['count' => 10])->assertOk()
+            ->assertViewIs('queue.create')->assertViewHas('info', 'success');
+        Queue::assertPushed(QueueJob::class, 1);
+    }
 
-        $count = mt_rand(10001, mt_getrandmax());
-        $response = $this->get('/queue/create?count='.$count);
-        $response->assertStatus(302)
-            ->assertRedirect('/error')
-            ->assertSessionHasErrors(['count']);
-
-        $count = mt_rand(1, 10000);
-        $response = $this->get('/queue/create?count='.$count);
-        $response->assertSuccessful()
-            ->assertViewIs('queue.create')
-            ->assertSeeText('laravel example')
-            ->assertViewHas('info', 'success');
+    public function test_disabled_demo_cannot_dispatch_jobs(): void
+    {
+        config(['demo.enabled' => false]);
+        $this->post('/queue/create', ['count' => 10])->assertNotFound();
+        Queue::assertNothingPushed();
     }
 }

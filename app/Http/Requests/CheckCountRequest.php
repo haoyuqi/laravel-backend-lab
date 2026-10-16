@@ -29,7 +29,7 @@ class CheckCountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'count' => 'bail|required|integer|between:1,10000',
+            'count' => 'bail|required|integer|between:1,1000',
         ];
     }
 }

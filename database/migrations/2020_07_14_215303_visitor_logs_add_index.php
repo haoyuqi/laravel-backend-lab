@@ -26,7 +26,7 @@ class VisitorLogsAddIndex extends Migration
     public function down()
     {
         Schema::table('visitor_logs', function (Blueprint $table) {
-            $table->dropIndex('visitor_id');
+            $table->dropIndex(['visitor_id']);
         });
     }
 }

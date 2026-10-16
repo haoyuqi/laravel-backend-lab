@@ -1,11 +1,17 @@
 <?php
 
-use Torann\GeoIP\Services\IPApi;
+use App\Libraries\GetCityByIp\BoundedIPApi;
 use Torann\GeoIP\Services\IPData;
 use Torann\GeoIP\Services\IPFinder;
 use Torann\GeoIP\Services\IPGeoLocation;
 use Torann\GeoIP\Services\MaxMindDatabase;
 use Torann\GeoIP\Services\MaxMindWebService;
+
+$geoipCacheSupportsTags = ! in_array(
+    env('CACHE_STORE', env('CACHE_DRIVER', 'file')),
+    ['file', 'database'],
+    true
+);
 
 return [
 
@@ -73,11 +79,12 @@ return [
         ],
 
         'ipapi' => [
-            'class' => IPApi::class,
+            'class' => BoundedIPApi::class,
             'secure' => true,
             'key' => env('IPAPI_KEY'),
             'continent_path' => storage_path('app/continents.json'),
             'lang' => 'zh-CN',
+            'timeout' => 3,
         ],
 
         'ipgeolocation' => [
@@ -119,7 +126,7 @@ return [
     |
     */
 
-    'cache' => 'all',
+    'cache' => $geoipCacheSupportsTags ? 'all' : 'none',
 
     /*
     |--------------------------------------------------------------------------
@@ -131,7 +138,7 @@ return [
     |
     */
 
-    'cache_tags' => ['torann-geoip-location'],
+    'cache_tags' => $geoipCacheSupportsTags ? ['torann-geoip-location'] : [],
 
     /*
     |--------------------------------------------------------------------------
