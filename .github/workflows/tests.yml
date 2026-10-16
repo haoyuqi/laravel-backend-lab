@@ -29,7 +29,6 @@ jobs:
       QUEUE_CONNECTION: sync
       BROADCAST_CONNECTION: log
       DB_CONNECTION: sqlite
-      DB_DATABASE: ${{ runner.temp }}/production-smoke.sqlite
       TELESCOPE_ENABLED: 'false'
       DEBUGBAR_ENABLED: 'false'
     steps:
@@ -45,6 +44,9 @@ jobs:
           extensions: redis, pdo_sqlite
           tools: composer:v2
           coverage: none
+
+      - name: Set production smoke database path
+        run: echo "DB_DATABASE=$RUNNER_TEMP/production-smoke.sqlite" >> "$GITHUB_ENV"
 
       - name: Install production dependencies
         run: composer install --no-dev --no-interaction --no-scripts --no-progress --prefer-dist
