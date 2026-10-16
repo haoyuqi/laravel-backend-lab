@@ -1,16 +1,16 @@
 # Upgrade Guide
 
-## Unreleased: runtime and data-integrity fixes
+## v3.0.0 to v3.0.1
 
 This update adds `2026_10_15_000000_harden_request_logs.php`. It widens both
 request-log URL columns to text and adds nullable unique event IDs for retry
-deduplication. Existing log rows and their IDs are preserved. No production
-version or release tag is assigned by this branch.
+deduplication. Existing log rows and their IDs are preserved.
 
 1. Back up the application database, rehearse the migration on a copy, enable
    maintenance mode, pause the scheduler, and stop workers before replacing code.
 2. Deploy the locked application dependencies and build frontend assets using
-   Node.js 24 LTS. Preserve `.env` and `APP_KEY`; clear old compiled configuration.
+   Node.js 24 LTS. Preserve `.env` and `APP_KEY`, set `APP_VERSION=3.0.1`, and
+   clear old compiled configuration.
 3. Run `php artisan migrate --force` against the intended application database
    before starting the new workers or reopening traffic. The new jobs require
    the event-ID columns. On MySQL, DDL may commit partially; inspect migration

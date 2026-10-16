@@ -257,9 +257,11 @@ Create an optimized frontend build with `npm run build`. Do not use the removed
 Laravel Mix commands from earlier releases.
 
 For an existing installation, follow [UPGRADE.md](UPGRADE.md) before deploying
-v3.0.0. This major release requires PHP 8.4+, upgrades Filament and Livewire,
-replaces Socket.IO with Reverb, and includes two database migrations. Set
-`APP_VERSION=3.0.0` in existing environments after upgrading.
+v3.0.1. This patch includes a request-log database migration; run it before
+restarting workers or reopening traffic. Set `APP_VERSION=3.0.1` in existing
+environments after upgrading. Installations upgrading from v2.x must first
+complete the v3.0.0 upgrade procedure, including PHP 8.4+, Filament/Livewire,
+Reverb configuration, and the earlier database migrations.
 
 ### Local real-time updates
 
