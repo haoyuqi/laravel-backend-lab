@@ -223,11 +223,11 @@ npm run dev
 使用 `npm run build` 生成优化后的前端资源。请勿继续使用早期版本中已经移除的
 Laravel Mix 命令。
 
-升级现有安装时，请先阅读 [UPGRADE.md](UPGRADE.md) 中的 v3.0.1 升级流程。
-此补丁包含请求日志的数据库迁移，必须在重启队列或恢复流量前执行。
-升级后将现有环境中的 `APP_VERSION` 更新为 `3.0.1`。从 v2.x 升级的安装，
-须先完成 v3.0.0 升级流程，包括 PHP 8.4+、Filament/Livewire、Reverb 配置
-及此前的数据库迁移。
+升级现有安装时，请先阅读 [UPGRADE.md](UPGRADE.md) 中的 v3.0.2 升级流程。
+此补丁移除未使用的 Laravel Admin 资源，没有新增数据库迁移。使用文件覆盖
+部署时，还须删除旧的 `public/vendor/laravel-admin/` 目录并清除其缓存副本。
+升级后将现有环境中的 `APP_VERSION` 更新为 `3.0.2`。更早版本的安装还须完成
+适用的 v3.0.0、v3.0.1 升级流程及其必要的数据库迁移。
 
 ### 本地实时更新时间
 
