@@ -8,6 +8,7 @@ use App\Filament\Widgets\StatsOverview;
 use App\Models\BlackList;
 use App\Models\User;
 use App\Models\Visitor;
+use App\Models\VisitorStatistics;
 use App\Support\RedisFailureLogger;
 use Exception;
 use Illuminate\Support\Facades\Cache;
@@ -137,9 +138,60 @@ class StatsOverviewWidgetTest extends TestCase
             ->test(StatsOverview::class)
             ->assertSuccessful()
             ->assertSee('今日 PV')
-            ->assertSee('0')
+            ->assertSee('不可用')
             ->assertSee('今日 UV')
-            ->assertSee('0');
+            ->assertSee('Redis 数据暂时不可用');
+    }
+
+    public function test_weekly_sparklines_use_recorded_values_and_keep_missing_dates_unknown(): void
+    {
+        $today = now()->toDateString();
+        $records = collect([
+            new VisitorStatistics(['date' => now()->subDays(5)->toDateString(), 'count' => 12]),
+            new VisitorStatistics(['date' => now()->subDays(2)->toDateString(), 'count' => 31]),
+        ]);
+        $dates = collect(range(6, 0))->map(fn (int $daysAgo): string => now()->subDays($daysAgo)->toDateString());
+        $method = new \ReflectionMethod(StatsOverview::class, 'buildSparklineSeries');
+
+        $series = $method->invoke(new StatsOverview, $records, $dates, $today, 44);
+
+        $this->assertSame([null, 12, null, null, 31, null, 44], $series);
+    }
+
+    public function test_health_widget_reports_cache_store_write_failure(): void
+    {
+        $store = 'health_check_failure';
+        $databaseConnection = 'health_check_database';
+        $previousStore = config('cache.default');
+        config([
+            'cache.default' => $store,
+            'database.connections.'.$databaseConnection => [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+                'foreign_key_constraints' => true,
+            ],
+            'cache.stores.'.$store => [
+                'driver' => 'database',
+                'table' => 'health_check_failure_cache',
+                'connection' => $databaseConnection,
+            ],
+        ]);
+        DB::purge($databaseConnection);
+        Cache::clearResolvedInstances();
+
+        try {
+            Livewire::actingAs($this->admin)
+                ->test(HealthStatusWidget::class)
+                ->assertSuccessful()
+                ->assertSee('注意检查')
+                ->assertSee('Database 缓存');
+        } finally {
+            Cache::clearResolvedInstances();
+            DB::disconnect($databaseConnection);
+            DB::purge($databaseConnection);
+            config(['cache.default' => $previousStore]);
+        }
     }
 
     public function test_stats_overview_widget_handles_cache_failure_gracefully(): void

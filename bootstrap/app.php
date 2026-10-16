@@ -19,7 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->prepend(RecordVisitors::class);
+        // Resolve trusted proxy headers and maintenance mode before tracking visitors.
+        $middleware->append(RecordVisitors::class);
         $middleware->appendToGroup('web', CountPvAndUv::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

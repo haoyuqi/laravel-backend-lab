@@ -8,6 +8,8 @@ class VisitorLog extends BaseModel
 {
     use SoftDeletes;
 
+    protected $fillable = ['url', 'event_id'];
+
     protected $dates = ['deleted_at'];
 
     // 更新父级时间戳

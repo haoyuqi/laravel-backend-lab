@@ -4,10 +4,13 @@ namespace App\Service;
 
 use App\Models\BlackList;
 use App\Models\User;
+use App\Support\IpAddress;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class AdminBlackListOperations
@@ -18,8 +21,9 @@ class AdminBlackListOperations
         $ip = $this->validatedIp($data);
 
         return app(AdminOperationRecorder::class)->run((new BlackList)->getConnection(), 'black_list.create', function () use ($ip): BlackList {
+            $this->assertNoEquivalentRecord($ip);
             $record = new BlackList(['ip' => $ip]);
-            $this->requireSuccess($record->save());
+            $this->saveRecord($record);
             $this->invalidate($record, null);
 
             return $record;
@@ -36,10 +40,11 @@ class AdminBlackListOperations
             if ($current->trashed()) {
                 throw (new ModelNotFoundException)->setModel(BlackList::class, [$record->getKey()]);
             }
+            $this->assertNoEquivalentRecord($ip, $current->getKey());
             $before = $this->snapshot($current);
             if ($current->ip !== $ip) {
                 $current->ip = $ip;
-                $this->requireSuccess($current->save());
+                $this->saveRecord($current);
                 $this->invalidate($current, $before);
             }
 
@@ -70,10 +75,10 @@ class AdminBlackListOperations
         $ip = $this->validatedIp(['ip' => $ip]);
 
         return app(AdminOperationRecorder::class)->run((new BlackList)->getConnection(), 'black_list.add_ip', function () use ($ip): BlackList {
-            $record = BlackList::withTrashed()->where('ip', $ip)->lockForUpdate()->first();
+            $record = IpAddress::findBlacklistRecord(BlackList::withTrashed()->lockForUpdate(), $ip);
             if (! $record) {
                 $record = new BlackList(['ip' => $ip]);
-                $this->requireSuccess($record->save());
+                $this->saveRecord($record);
                 $this->invalidate($record, null);
             } elseif ($record->trashed()) {
                 $before = $this->snapshot($record);
@@ -98,12 +103,45 @@ class AdminBlackListOperations
 
     private function validatedIp(array $data): string
     {
-        return Validator::make($data, ['ip' => ['required', 'string', 'ip', 'max:45']])->validate()['ip'];
+        $ip = Validator::make($data, ['ip' => ['required', 'string', 'ip', 'max:45']])->validate()['ip'];
+
+        return IpAddress::normalize($ip);
     }
 
     private function locked(BlackList $record): BlackList
     {
         return $record->newQuery()->withTrashed()->lockForUpdate()->findOrFail($record->getKey());
+    }
+
+    private function assertNoEquivalentRecord(string $ip, int|string|null $exceptId = null): void
+    {
+        $query = BlackList::withTrashed()->lockForUpdate();
+        if ($exceptId !== null) {
+            $query->where((new BlackList)->getKeyName(), '!=', $exceptId);
+        }
+
+        if (IpAddress::findBlacklistRecord($query, $ip)) {
+            throw ValidationException::withMessages(['ip' => 'This IP address is already on the blacklist.']);
+        }
+    }
+
+    private function saveRecord(BlackList $record): void
+    {
+        try {
+            $this->requireSuccess($record->save());
+        } catch (QueryException $exception) {
+            $state = (string) ($exception->errorInfo[0] ?? $exception->getCode());
+            $message = strtolower((string) ($exception->errorInfo[2] ?? $exception->getMessage()));
+            $isUniqueViolation = in_array($state, ['23000', '23505'], true);
+            $isBlacklistIpConstraint = str_contains($message, 'black_lists.ip') ||
+                str_contains($message, 'black_lists_ip_unique');
+
+            if ($isUniqueViolation && $isBlacklistIpConstraint) {
+                throw ValidationException::withMessages(['ip' => 'This IP address is already on the blacklist.']);
+            }
+
+            throw $exception;
+        }
     }
 
     private function snapshot(BlackList $record): array

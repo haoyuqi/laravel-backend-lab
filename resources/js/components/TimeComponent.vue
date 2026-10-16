@@ -26,10 +26,14 @@
 </template>
 
 <script>
+const MAX_TIMES = 50;
+
 export default {
     data() {
+        const initialTimes = typeof this.init_data === 'string' ? JSON.parse(this.init_data) : (this.init_data || []);
+
         return {
-            time_list: typeof this.init_data === 'string' ? JSON.parse(this.init_data) : (this.init_data || [])
+            time_list: initialTimes.slice(-MAX_TIMES)
         }
     },
     props: ['init_data'],
@@ -38,6 +42,9 @@ export default {
             window.Echo.channel('push-time')
                 .listen('PushTimeEvent', (e) => {
                     this.time_list.push(e.time);
+                    if (this.time_list.length > MAX_TIMES) {
+                        this.time_list.splice(0, this.time_list.length - MAX_TIMES);
+                    }
                 });
         }
     },

@@ -1,5 +1,36 @@
 # Upgrade Guide
 
+## v3.0.0 to v3.0.1
+
+This update adds `2026_10_15_000000_harden_request_logs.php`. It widens both
+request-log URL columns to text and adds nullable unique event IDs for retry
+deduplication. Existing log rows and their IDs are preserved.
+
+1. Back up the application database, rehearse the migration on a copy, enable
+   maintenance mode, pause the scheduler, and stop workers before replacing code.
+2. Deploy the locked application dependencies and build frontend assets using
+   Node.js 24 LTS. Preserve `.env` and `APP_KEY`, set `APP_VERSION=3.0.1`, and
+   clear old compiled configuration.
+3. Run `php artisan migrate --force` against the intended application database
+   before starting the new workers or reopening traffic. The new jobs require
+   the event-ID columns. On MySQL, DDL may commit partially; inspect migration
+   status and schema if a migration fails. Do not drop or recreate log tables.
+4. Review `TRUSTED_PROXIES`, backup notification settings, and demo access as
+   documented in the README. The demos now default to disabled; queue creation
+   uses POST, and the item limit is 1,000. Blacklist enforcement queries the
+   database on every request, so account for that database load.
+5. Rebuild configuration and restart workers on the new code. Queue reservation
+   timeouts increase to 180 seconds, exceeding the 120-second job timeout. Existing
+   queued jobs remain supported. Check health, admin login, blacklist enforcement,
+   and visitor/blocked-request logging before resuming normal traffic.
+
+New URL records omit query strings and fragments; historical rows are preserved.
+Before rolling back code, stop workers and writers again. The widened columns
+and nullable event IDs can remain in place when restoring the old artifact.
+Schema rollback refuses to narrow URL columns while any value exceeds 255
+characters, preventing truncation. Do not delete long records to force rollback;
+retain the schema or reconcile data under a separately reviewed recovery plan.
+
 ## v2.2.1 to v3.0.0
 
 This is a breaking application release. Laravel remains on 13.x; PHP now

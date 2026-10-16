@@ -2,10 +2,7 @@
 
 use Spatie\Backup\Notifications\Notifiable;
 use Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification;
-use Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification;
 use Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification;
-use Spatie\Backup\Notifications\Notifications\CleanupWasSuccessfulNotification;
-use Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification;
 use Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification;
 use Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy;
 use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays;
@@ -65,7 +62,7 @@ return [
              * MySQL, PostgreSQL, SQLite and Mongo databases are supported.
              */
             'databases' => [
-                'mysql',
+                env('DB_CONNECTION', 'mysql'),
             ],
         ],
 
@@ -167,14 +164,13 @@ return [
      */
     'notifications' => [
 
-        'notifications' => [
-            BackupHasFailedNotification::class => [],
-            UnhealthyBackupWasFoundNotification::class => [],
-            CleanupHasFailedNotification::class => [],
-            BackupWasSuccessfulNotification::class => [],
-            HealthyBackupWasFoundNotification::class => [],
-            CleanupWasSuccessfulNotification::class => [],
-        ],
+        'notifications' => filter_var(env('BACKUP_NOTIFICATION_EMAIL'), FILTER_VALIDATE_EMAIL)
+            ? [
+                BackupHasFailedNotification::class => ['mail'],
+                UnhealthyBackupWasFoundNotification::class => ['mail'],
+                CleanupHasFailedNotification::class => ['mail'],
+            ]
+            : [],
 
         /*
          * Here you can specify the notifiable to which the notifications should be sent.
@@ -182,11 +178,12 @@ return [
         'notifiable' => Notifiable::class,
 
         'mail' => [
-            'to' => env('ADMIN_EMAILS') ?: 'your@example.com',
+            // The package validates this value even when mail notifications are off.
+            'to' => filter_var(env('BACKUP_NOTIFICATION_EMAIL'), FILTER_VALIDATE_EMAIL) ?: 'backup-notifications-disabled@example.invalid',
 
             'from' => [
-                'address' => env('MAIL_FROM_ADDRESS') ?: 'hello@example.com',
-                'name' => env('MAIL_FROM_NAME') ?: 'Example',
+                'address' => env('MAIL_FROM_ADDRESS'),
+                'name' => env('MAIL_FROM_NAME'),
             ],
         ],
 

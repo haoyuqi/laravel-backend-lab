@@ -11,10 +11,15 @@ class BingWallpaper implements BingWallpaperInterface
 {
     public function download(): string
     {
-        $client = new Client;
+        $client = new Client(['connect_timeout' => 5, 'timeout' => 15]);
         $response = $client->request('GET', 'https://bing.ioliu.cn/v1?w=1920&h=1200');
 
-        return (string) $response->getBody()->getContents();
+        $content = (string) $response->getBody()->getContents();
+        if (@getimagesizefromstring($content) === false) {
+            throw new \UnexpectedValueException('Wallpaper service did not return an image.');
+        }
+
+        return $content;
     }
 
     public function save($content, $save_path, $file_name = null): bool

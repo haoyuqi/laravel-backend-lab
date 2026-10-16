@@ -127,14 +127,14 @@ The application requires:
 
 - PHP 8.4 or later, with the extensions required by `composer.lock`;
 - Composer 2;
-- Node.js 20 and npm;
+- Node.js 24 LTS and npm;
 - SQLite, MySQL, or PostgreSQL for persistent application data;
-- Redis for visitor statistics, blacklist caching, and related scheduled jobs;
+- Redis for visitor statistics and related scheduled jobs;
 - a web server supported by Laravel in production.
 
 Laravel-managed cache, sessions, queues, and broadcasting do not have to use
 Redis. However, Redis itself is required by the current application because
-visitor counting, blacklist checks, dashboard statistics, and maintenance
+visitor counting, dashboard statistics, and maintenance
 commands access it directly. Making Redis entirely optional requires an
 application code change; changing only `.env` is not sufficient.
 
@@ -143,7 +143,7 @@ application code change; changing only `.env` is not sufficient.
 | Service | Required | Configuration and alternatives |
 | --- | --- | --- |
 | Database | Yes | Set `DB_CONNECTION` and the matching `DB_*` values. SQLite, MySQL, and PostgreSQL are supported. |
-| Redis | Yes | Used directly by visitor statistics, blacklist checks, dashboard widgets, and scheduled cleanup. The host, port, credentials, client, and database indexes are configurable through `REDIS_*`. |
+| Redis | Yes | Used directly by visitor statistics, dashboard widgets, and scheduled cleanup. Blacklist enforcement reads the database so stale cache data cannot change a decision. The host, port, credentials, client, and database indexes are configurable through `REDIS_*`. |
 | Queue worker | No | Required only with an asynchronous queue connection. The `sync` driver handles jobs in the request process. |
 | Horizon | No | Requires both Redis and a Redis queue connection. It is not needed with `sync` or a non-Redis queue. |
 | Scheduler | Feature-dependent | Run `php artisan schedule:run` every minute to enable scheduled backups, cleanup, statistics, and maintenance tasks. |
@@ -165,6 +165,28 @@ Important environment options include:
 - `FILESYSTEM_DRIVER`, `FILESYSTEM_CLOUD`, and `AWS_*` for file storage;
 - `TELESCOPE_ENABLED` and `DEBUGBAR_ENABLED` for optional inspection tools;
 - `TEST_DB_*` for an isolated non-default test database.
+
+The queue and sorting demos are disabled by default. Set
+`DEMO_ROUTES_ENABLED=true` only when exposing them intentionally. They share a
+limit of 10 requests per minute per IP and accept at most 1,000 items. Creating
+a demo job uses `POST /queue/create` and requires the normal web CSRF token.
+
+Behind a reverse proxy, set `TRUSTED_PROXIES` to a comma-separated list of its
+addresses or CIDR ranges. Only list proxies controlled by your deployment;
+forwarded client headers from other addresses are ignored.
+
+Backups use the connection selected by `DB_CONNECTION`. Configure
+`BACKUP_NOTIFICATION_EMAIL` with a single valid recipient and configure the mail
+transport to enable backup failure notifications. Backups remain local unless
+you change the backup disk; periodically restore a backup into an isolated
+database to verify recovery. Schedule locks prevent overlapping instances of
+the same command; multi-server deployments must use a shared lock store and
+run the scheduler on one designated server.
+
+New visitor and blocked-request logs retain the request path without query
+strings or fragments, with a maximum of 2,048 bytes. Historical logs are not
+rewritten automatically. Telescope redacts Livewire component request and
+response payloads, including in local environments.
 
 ## Installation
 
@@ -204,7 +226,7 @@ BROADCAST_CONNECTION=log
 ```
 
 These settings reduce Redis usage but do not eliminate the direct Redis calls
-made by visitor statistics and blacklist features.
+made by visitor statistics features.
 
 Complete the application setup:
 
@@ -235,9 +257,11 @@ Create an optimized frontend build with `npm run build`. Do not use the removed
 Laravel Mix commands from earlier releases.
 
 For an existing installation, follow [UPGRADE.md](UPGRADE.md) before deploying
-v3.0.0. This major release requires PHP 8.4+, upgrades Filament and Livewire,
-replaces Socket.IO with Reverb, and includes two database migrations. Set
-`APP_VERSION=3.0.0` in existing environments after upgrading.
+v3.0.1. This patch includes a request-log database migration; run it before
+restarting workers or reopening traffic. Set `APP_VERSION=3.0.1` in existing
+environments after upgrading. Installations upgrading from v2.x must first
+complete the v3.0.0 upgrade procedure, including PHP 8.4+, Filament/Livewire,
+Reverb configuration, and the earlier database migrations.
 
 ### Local real-time updates
 

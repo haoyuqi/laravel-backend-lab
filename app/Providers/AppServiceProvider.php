@@ -17,7 +17,10 @@ use App\Support\RedisFailureLogger;
 use GuzzleHttp\Client;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -45,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        RateLimiter::for('demo', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+
         $this->app->bind(GetCityByIpAbstract::class, function ($app) {
             return new GeoIP(new Client);
             //            return new FreeAPI(new Client());

@@ -17,7 +17,10 @@ class FreeAPI extends GetCityByIpAbstract
             return '';
         }
 
-        $response = $this->client->request('GET', $this->APIUrl.$ip.'?lang=zh-CN');
+        $response = $this->client->request('GET', $this->APIUrl.$ip.'?lang=zh-CN', [
+            'timeout' => 3,
+            'connect_timeout' => 1,
+        ]);
         $response_collect = collect(json_decode($response->getBody()->getContents()));
 
         if ($response->getStatusCode() != 200 || $response_collect->get('status') != 'success') {
