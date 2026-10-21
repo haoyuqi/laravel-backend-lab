@@ -33,11 +33,16 @@ It verifies Dependabot metadata using an Action pinned to a commit SHA and
 never checks out or runs pull request code. Workflows cannot approve pull
 requests.
 
-Automatic merging is limited to Composer and npm patch or minor updates from
-Dependabot targeting `master`, after its required checks pass. Major updates,
-other ecosystems, and unknown update types require a maintainer to review and
-merge them manually. Dependabot security updates may target the default branch;
-routine development still follows the branch flow in [CONTRIBUTING.md](CONTRIBUTING.md).
+Automatic merging is limited to Composer and npm patch updates from Dependabot
+targeting `master`. The pull request must not be a draft and may only modify
+`composer.json`, `composer.lock`, `package.json`, or `package-lock.json`. GitHub
+waits for the required `CI result` check and an up-to-date branch before merging.
+The workflow disables auto-merge if an update stops matching these rules. Minor,
+major, pre-release, other ecosystems, and unknown update types require a
+maintainer to review and merge them manually. Disable **Allow auto-merge** in
+repository settings to stop automatic merges. Dependabot security updates may
+target the default branch; routine development still follows the branch flow in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 Secret scanning and push protection detect supported credentials. CodeQL default
 setup analyzes GitHub Actions and JavaScript/TypeScript. CodeQL does not provide
