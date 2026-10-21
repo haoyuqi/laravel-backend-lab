@@ -12,42 +12,77 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   enable-auto-merge:
     if: >-
-      github.actor == 'dependabot[bot]' &&
       github.event.pull_request.user.login == 'dependabot[bot]' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.base.ref == 'master'
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: write
       pull-requests: write
+    defaults:
+      run:
+        shell: bash
 
     steps:
       # This privileged workflow must never check out or execute PR code.
       - name: Fetch verified Dependabot metadata
         id: metadata
+        continue-on-error: true
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
         with:
           github-token: ${{ github.token }}
 
-      - name: Enable squash auto-merge for approved updates
-        if: >-
-          contains(fromJSON('["composer", "npm"]'), steps.metadata.outputs.package-ecosystem) &&
-          contains(fromJSON('["version-update:semver-patch", "version-update:semver-minor"]'), steps.metadata.outputs.update-type)
+      - name: Enable or disable auto-merge
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --auto --squash "$PR_URL"
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          AUTO_MERGE_ENABLED: ${{ github.event.pull_request.auto_merge != null }}
+          METADATA_OUTCOME: ${{ steps.metadata.outcome }}
+          ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        run: |
+          set -euo pipefail
 
-      - name: Disable existing auto-merge for unapproved updates
-        if: >-
-          github.event.pull_request.auto_merge != null &&
-          (!contains(fromJSON('["composer", "npm"]'), steps.metadata.outputs.package-ecosystem) ||
-          !contains(fromJSON('["version-update:semver-patch", "version-update:semver-minor"]'), steps.metadata.outputs.update-type))
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --disable-auto "$PR_URL"
+          eligible=true
+          reason=""
+
+          if [[ "$METADATA_OUTCOME" != "success" ]]; then
+            eligible=false
+            reason="Dependabot metadata could not be verified"
+          elif [[ "$BASE_REF" != "master" ]]; then
+            eligible=false
+            reason="the pull request does not target master"
+          elif [[ "$IS_DRAFT" != "false" ]]; then
+            eligible=false
+            reason="the pull request is a draft"
+          elif [[ "$ECOSYSTEM" != "composer" && "$ECOSYSTEM" != "npm_and_yarn" ]]; then
+            eligible=false
+            reason="unsupported ecosystem: $ECOSYSTEM"
+          elif [[ "$UPDATE_TYPE" != "version-update:semver-patch" ]]; then
+            eligible=false
+            reason="not a patch update: $UPDATE_TYPE"
+          elif ! gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" |
+            jq -e 'add | length > 0 and all(.status == "modified" and (.filename | IN("composer.json", "composer.lock", "package.json", "package-lock.json")))' >/dev/null; then
+            eligible=false
+            reason="the pull request changes files other than dependency manifests and lockfiles"
+          fi
+
+          if [[ "$eligible" == "true" ]]; then
+            echo "Enabling squash auto-merge for $PR_URL"
+            gh pr merge --auto --squash "$PR_URL"
+          elif [[ "$AUTO_MERGE_ENABLED" == "true" ]]; then
+            echo "Disabling auto-merge for $PR_URL: $reason"
+            gh pr merge --disable-auto "$PR_URL"
+          else
+            echo "Leaving $PR_URL for manual review: $reason"
+          fi
