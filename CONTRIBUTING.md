@@ -62,9 +62,11 @@ matrix job, security checks, and browser tests all succeed. A failed, cancelled,
 or skipped job blocks merging.
 
 Promote releases through a `develop` → `master` pull request, then create the
-release tag. If `master` has received dependency updates, bring them into
-`develop` through a pull request before promotion. Changing CI check names
-requires updating branch protection in the same rollout.
+release tag. Before promotion, bring any commits unique to `master` into
+`develop` through a pull request. When the branches differ only in merge
+history, include a meaningful development change in that sync PR so GitHub
+has a file difference to review. Changing CI check names requires updating
+branch protection in the same rollout.
 
 Dependabot security updates targeting the default branch are an exception to
 the routine PR target. Only Composer and npm patch updates that change dependency
