@@ -17,6 +17,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pint:
+    name: Laravel Pint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-scripts
+
+      - name: Run Laravel Pint
+        run: ./vendor/bin/pint --test
+
   production-smoke:
     name: Production installation smoke test
     runs-on: ubuntu-latest
@@ -417,3 +452,26 @@ jobs:
           path: playwright-report/
           if-no-files-found: ignore
           retention-days: 14
+
+  result:
+    name: CI result
+    if: ${{ always() }}
+    needs: [pint, production-smoke, sqlite-tests, php-tests, security-checks, browser-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every check to succeed
+        env:
+          PINT_RESULT: ${{ needs.pint.result }}
+          PRODUCTION_RESULT: ${{ needs.production-smoke.result }}
+          SQLITE_RESULT: ${{ needs.sqlite-tests.result }}
+          PHP_RESULT: ${{ needs.php-tests.result }}
+          SECURITY_RESULT: ${{ needs.security-checks.result }}
+          BROWSER_RESULT: ${{ needs.browser-tests.result }}
+        run: |
+          for result in "$PINT_RESULT" "$PRODUCTION_RESULT" "$SQLITE_RESULT" "$PHP_RESULT" "$SECURITY_RESULT" "$BROWSER_RESULT"; do
+            if [[ "$result" != "success" ]]; then
+              echo "::error::Every CI job must succeed (Pint=$PINT_RESULT, production=$PRODUCTION_RESULT, SQLite=$SQLITE_RESULT, PHP=$PHP_RESULT, security=$SECURITY_RESULT, browser=$BROWSER_RESULT)."
+              exit 1
+            fi
+          done
