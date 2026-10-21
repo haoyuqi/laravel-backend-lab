@@ -56,12 +56,10 @@ resolution of review conversations. These rules also apply to administrators;
 do not push directly to `develop`. Reviewer approvals are not mandatory so the
 maintainer can merge their own pull requests after validation.
 
-The required checks match the current `develop` test matrix:
-
-*   `SQLite tests (PHP 8.4)`
-*   `PHP tests (PHP 8.4, postgres 18)`
-*   `Laravel Pint`
-*   `Security checks`
+Both `develop` and `master` require `CI result`. It succeeds only when Laravel
+Pint, the production installation smoke test, SQLite tests, every PHP database
+matrix job, security checks, and browser tests all succeed. A failed, cancelled,
+or skipped job blocks merging.
 
 Promote releases through a `develop` → `master` pull request, then create the
 release tag. If `master` has received dependency updates, bring them into
@@ -69,10 +67,11 @@ release tag. If `master` has received dependency updates, bring them into
 requires updating branch protection in the same rollout.
 
 Dependabot security updates targeting the default branch are an exception to
-the routine PR target. Only Composer and npm patch or minor updates are eligible
-for automatic merging after the required checks pass. Major updates and other
-ecosystems require manual review and merge. See [SECURITY.md](SECURITY.md) for
-the automation policy and private vulnerability reporting process.
+the routine PR target. Only Composer and npm patch updates that change dependency
+manifests or lockfiles are eligible for automatic merging after `CI result`
+passes. Minor, major, pre-release, and unrecognized updates require manual
+review and merge. See [SECURITY.md](SECURITY.md) for the automation policy and
+private vulnerability reporting process.
 
 ### Commit Messages
 
