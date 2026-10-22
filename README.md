@@ -7,6 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml/badge.svg?branch=master"></a>
+  <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml?query=branch%3Amaster"><img alt="Coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fhaoyuqi%2Flaravel-backend-lab%2Fcoverage-badge%2Fcoverage.json"></a>
   <a href="https://www.php.net/"><img alt="PHP 8.4 or later" src="https://img.shields.io/badge/PHP-%5E8.4-777BB4?logo=php&logoColor=white"></a>
   <a href="https://laravel.com/"><img alt="Laravel 13" src="https://img.shields.io/badge/Laravel-13.x-FF2D20?logo=laravel&logoColor=white"></a>
   <a href="https://filamentphp.com/"><img alt="Filament 5" src="https://img.shields.io/badge/Filament-5.x-FDAE4B"></a>
@@ -307,9 +308,8 @@ assets afterwards with `npm run build`.
 The default test suite uses a dedicated `testing` connection backed by an
 in-memory SQLite database. It does not use the primary development database.
 
-Line coverage for `app/`: **91.55%**, measured by the SQLite PHPUnit job in the
-[CI run on 2026-10-22](https://github.com/haoyuqi/laravel-backend-lab/actions/runs/39708654277)
-(required minimum: 85%).
+The coverage badge above updates after each successful default-branch CI run.
+It reports SQLite PHPUnit line coverage for `app/` (required minimum: 85%).
 
 GitHub Actions runs the test suite for pull requests and pushes to `master`.
 The daily run is scheduled for 03:46 Beijing time on the default branch
