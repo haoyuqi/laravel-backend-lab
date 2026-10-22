@@ -5,6 +5,8 @@ on:
     branches:
       - master
   pull_request:
+    branches:
+      - master
   schedule:
     # 19:46 UTC is 03:46 Asia/Shanghai on the following day.
     - cron: '46 19 * * *'

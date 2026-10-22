@@ -305,6 +305,10 @@ assets afterwards with `npm run build`.
 
 ## Testing
 
+`master` is the only long-lived code branch. Open pull requests from short-lived
+branches directly against `master`; GitHub automatically deletes those branches
+after merging. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
+
 The default test suite uses a dedicated `testing` connection backed by an
 in-memory SQLite database. It does not use the primary development database.
 

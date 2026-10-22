@@ -221,7 +221,7 @@ Livewire 4 compatibility before upgrading.
 #### Source migration preconditions
 
 - PHP >= 8.4 and Laravel 13.x.
-- Clean working directory on branch derived from `develop`.
+- Clean working directory on a short-lived branch derived from `master`.
 - Baseline tests passing (`php artisan test`).
 - No custom third-party Filament plugins installed.
 - Ensure the development environment has Node.js (v20+) and Composer v2 available.
@@ -821,15 +821,15 @@ during the database migration window.
 
 #### 4. Deploy the v2.1.0 release tag
 
-Deploy the immutable release tag rather than the moving **2.x** branch:
+Deploy the immutable release tag rather than a moving branch:
 
 ~~~bash
 git fetch --tags origin
 git checkout v2.1.0
 ~~~
 
-The **2.x** branch may be used in staging before the release tag is created, but
-production should use the final tag.
+The historical **2.x** release branch has been retired. For current releases,
+validate changes through pull requests to `master`, then deploy the final tag.
 
 #### 5. Update production environment configuration
 

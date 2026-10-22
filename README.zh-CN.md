@@ -266,6 +266,9 @@ php artisan queue:work --queue=push-time
 
 ## 测试
 
+`master` 是唯一的长期代码分支。基于它创建临时分支，直接向 `master` 提交拉取请求；
+合并后 GitHub 会自动删除临时分支。完整流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 默认测试套件使用独立的 `testing` 连接和内存 SQLite 数据库，不会使用主要开发数据库。
 
 上方覆盖率徽章会在默认分支每次 CI 成功后自动更新，显示 SQLite PHPUnit
