@@ -311,6 +311,11 @@ Line coverage for `app/`: **91.55%**, measured by the SQLite PHPUnit job in the
 [CI run on 2026-10-22](https://github.com/haoyuqi/laravel-backend-lab/actions/runs/39708654277)
 (required minimum: 85%).
 
+GitHub Actions runs the test suite for pull requests and pushes to `master`.
+The daily run is scheduled for 03:46 Beijing time on the default branch
+(`master`). Each run's summary shows measured test and coverage results,
+installed versions, and the databases actually tested.
+
 ```bash
 php artisan test
 ./vendor/bin/pint --test

@@ -271,6 +271,10 @@ php artisan queue:work --queue=push-time
 [2026-10-22 的 CI 运行](https://github.com/haoyuqi/laravel-backend-lab/actions/runs/39708654277)
 中测得（最低要求：85%）。
 
+GitHub Actions 会在拉取请求和推送到 `master` 时运行测试。每日任务安排在
+北京时间 03:46，只在默认分支 `master` 上运行。每次运行的摘要展示实测的
+测试与覆盖率结果、安装的版本，以及实际测试的数据库。
+
 ```bash
 php artisan test
 ./vendor/bin/pint --test
