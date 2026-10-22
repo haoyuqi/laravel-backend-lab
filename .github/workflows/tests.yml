@@ -361,11 +361,8 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: Install Node dependencies
-        run: npm ci --ignore-scripts
-
       - name: Audit Node dependencies
-        run: npm audit
+        run: npm audit --package-lock-only
 
   browser-tests:
     name: Browser tests (Node ${{ matrix.node-version }})
