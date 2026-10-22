@@ -308,8 +308,8 @@ assets afterwards with `npm run build`.
 The default test suite uses a dedicated `testing` connection backed by an
 in-memory SQLite database. It does not use the primary development database.
 
-The coverage badge above updates after each successful default-branch SQLite
-PHPUnit run. It reports line coverage for `app/` (required minimum: 85%).
+The coverage badge above updates after each successful default-branch CI run.
+It reports SQLite PHPUnit line coverage for `app/` (required minimum: 85%).
 
 GitHub Actions runs the test suite for pull requests and pushes to `master`.
 The daily run is scheduled for 03:46 Beijing time on the default branch

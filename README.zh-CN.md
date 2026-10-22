@@ -268,8 +268,8 @@ php artisan queue:work --queue=push-time
 
 默认测试套件使用独立的 `testing` 连接和内存 SQLite 数据库，不会使用主要开发数据库。
 
-上方覆盖率徽章会在默认分支每次 SQLite PHPUnit 覆盖率测试成功后自动更新，
-显示 `app/` 的行覆盖率（最低要求：85%）。
+上方覆盖率徽章会在默认分支每次 CI 成功后自动更新，显示 SQLite PHPUnit
+测得的 `app/` 行覆盖率（最低要求：85%）。
 
 GitHub Actions 会在拉取请求和推送到 `master` 时运行测试。每日任务安排在
 北京时间 03:46，只在默认分支 `master` 上运行。每次运行的摘要展示实测的
