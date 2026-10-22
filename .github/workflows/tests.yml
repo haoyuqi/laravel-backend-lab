@@ -6,7 +6,8 @@ on:
       - master
   pull_request:
   schedule:
-    - cron: '0 0 * * *'
+    # 19:46 UTC is 03:46 Asia/Shanghai on the following day.
+    - cron: '46 19 * * *'
   workflow_dispatch:
 
 permissions:
