@@ -313,7 +313,10 @@ The default test suite uses a dedicated `testing` connection backed by an
 in-memory SQLite database. It does not use the primary development database.
 
 The coverage badge above updates after each successful default-branch CI run.
-It reports SQLite PHPUnit line coverage for `app/` (required minimum: 85%).
+It reports SQLite PHPUnit line coverage for `app/`. CI requires every
+executable line in that source scope to be covered. The gate compares raw
+covered and total line counts, so a rounded percentage cannot satisfy it; a
+missing coverage report also fails CI.
 
 GitHub Actions runs the test suite for pull requests and pushes to `master`.
 The daily run is scheduled for 03:46 Beijing time on the default branch

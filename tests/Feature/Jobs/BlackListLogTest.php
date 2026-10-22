@@ -5,6 +5,7 @@ namespace Tests\Feature\Jobs;
 use App\Jobs\BlackListLog;
 use App\Models\BlackList;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class BlackListLogTest extends TestCase
@@ -58,4 +59,15 @@ class BlackListLogTest extends TestCase
             'url' => '/blocked',
         ]);
     }
+
+    public function test_missing_target_is_logged_and_skipped(): void
+    {
+        Log::shouldReceive('error')->once()->with('black list log queue error.');
+        Log::shouldReceive('error')->once()->with('black list log target not found', ['target_type' => 'ip']);
+
+        (new BlackListLog('203.0.113.99', '/blocked'))->handle();
+
+        $this->assertDatabaseCount('black_list_logs', 0);
+    }
+
 }

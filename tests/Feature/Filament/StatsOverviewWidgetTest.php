@@ -158,6 +158,32 @@ class StatsOverviewWidgetTest extends TestCase
         $this->assertSame([null, 12, null, null, 31, null, 44], $series);
     }
 
+    public function test_weekly_sparklines_degrade_to_empty_series_when_storage_is_unavailable(): void
+    {
+        $connection = 'missing_statistics_table';
+        $previousConnection = config('database.default');
+        config([
+            'database.default' => $connection,
+            'database.connections.'.$connection => [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+                'foreign_key_constraints' => true,
+            ],
+        ]);
+        DB::purge($connection);
+
+        try {
+            $method = new \ReflectionMethod(StatsOverview::class, 'getWeeklySparklines');
+
+            $this->assertSame(['pv' => [], 'uv' => []], $method->invoke(new StatsOverview, null, null));
+        } finally {
+            DB::disconnect($connection);
+            DB::purge($connection);
+            config(['database.default' => $previousConnection]);
+        }
+    }
+
     public function test_health_widget_reports_cache_store_write_failure(): void
     {
         $store = 'health_check_failure';
@@ -263,5 +289,33 @@ class StatsOverviewWidgetTest extends TestCase
             ->test(HealthStatusWidget::class)
             ->assertSuccessful()
             ->assertSee('Debug');
+    }
+
+    public function test_health_widget_identifies_mysql_and_postgres_connections(): void
+    {
+        $connection = \Mockery::mock();
+        $connection->shouldReceive('getDriverName')->twice()->andReturn('mysql', 'pgsql');
+        DB::shouldReceive('connection')->twice()->andReturn($connection);
+        DB::shouldReceive('select')->twice()->with('SELECT 1')->andReturn([]);
+        $method = new \ReflectionMethod(HealthStatusWidget::class, 'checkDatabaseHealth');
+        $widget = new HealthStatusWidget;
+
+        $this->assertSame('MySQL', $method->invoke($widget)['name']);
+        $this->assertSame('PostgreSQL', $method->invoke($widget)['name']);
+    }
+
+    public function test_health_widget_reports_the_configured_database_when_connection_fails(): void
+    {
+        config(['database.default' => 'pgsql']);
+        DB::shouldReceive('connection')->once()->andThrow(new Exception('Connection unavailable'));
+        DB::shouldReceive('select')->once()->with('SELECT 1')->andThrow(new Exception('Connection unavailable'));
+        $method = new \ReflectionMethod(HealthStatusWidget::class, 'checkDatabaseHealth');
+
+        $status = $method->invoke(new HealthStatusWidget);
+
+        $this->assertSame('unhealthy', $status['status']);
+        $this->assertSame('PostgreSQL', $status['name']);
+        $this->assertSame('pgsql', $status['driver']);
+        $this->assertSame('--', $status['latency']);
     }
 }

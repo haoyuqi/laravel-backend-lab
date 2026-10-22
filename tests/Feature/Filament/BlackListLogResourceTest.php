@@ -7,6 +7,7 @@ use App\Filament\Resources\BlackListLogResource\Pages\ListBlackListLogs;
 use App\Models\BlackList;
 use App\Models\BlackListLog;
 use App\Models\User;
+use Filament\Schemas\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -136,5 +137,16 @@ class BlackListLogResourceTest extends TestCase
         $this->assertFalse(BlackListLogResource::canEdit(new BlackListLog));
         $this->assertFalse(BlackListLogResource::canDelete(new BlackListLog));
         $this->assertFalse(BlackListLogResource::canDeleteAny());
+    }
+
+    public function test_black_list_log_form_requires_a_url(): void
+    {
+        $schema = BlackListLogResource::form(Schema::make());
+
+        $this->assertSame(['url'], array_map(
+            static fn ($component): string => $component->getName(),
+            $schema->getComponents()
+        ));
+        $this->assertTrue($schema->getComponents()[0]->isRequired());
     }
 }

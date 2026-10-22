@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 
@@ -24,17 +25,33 @@ def installed_version(code):
         return None
 
 
+def coverage_meets_minimum(covered, total, minimum):
+    if type(covered) is not int or type(total) is not int:
+        return False
+    if total <= 0 or covered < 0 or covered > total:
+        return False
+    try:
+        threshold = Decimal(str(minimum))
+    except InvalidOperation:
+        return False
+    return Decimal(covered) * 100 >= Decimal(total) * threshold
+
+
 def collect(name, result):
     junit = xml_root("ci-data/junit.xml")
     suites = [junit] if junit is not None and junit.get("tests") else list(junit.findall("./testsuite")) if junit is not None else []
     count = lambda key: sum(int(suite.get(key, "0")) for suite in suites) if suites else None
     clover = xml_root("ci-data/coverage.xml")
     metrics = clover.find("./project/metrics") if clover is not None else None
-    statements = int(metrics.get("statements", "0")) if metrics is not None else 0
-    covered = int(metrics.get("coveredstatements", "0")) if metrics is not None else 0
+    raw_statements = metrics.get("statements", "0") if metrics is not None else "0"
+    raw_covered = metrics.get("coveredstatements", "0") if metrics is not None else "0"
+    if any(not value.isascii() or not value.isdecimal() for value in (raw_statements, raw_covered)):
+        raise SystemExit("Clover statement counts must contain ASCII decimal digits only")
+    statements = int(raw_statements)
+    covered = int(raw_covered)
     coverage = covered / statements * 100 if statements else None
-    minimum = float(os.environ["MIN_LINE_COVERAGE"]) if name == "sqlite" and os.environ.get("MIN_LINE_COVERAGE") else None
-    below_minimum = minimum is not None and (coverage is None or coverage < minimum)
+    minimum = os.environ.get("MIN_LINE_COVERAGE") if name == "sqlite" else None
+    below_minimum = minimum is not None and not coverage_meets_minimum(covered, statements, minimum)
     data = {
         "name": name,
         "result": "failure" if below_minimum else result,
@@ -43,16 +60,33 @@ def collect(name, result):
         "tests": count("tests"),
         "failures": count("failures") + count("errors") if suites else None,
         "skipped": count("skipped"),
+        "covered_statements": covered,
+        "total_statements": statements,
         "coverage": f"{coverage:.2f}%" if coverage is not None else None,
     }
     Path("ci-data").mkdir(exist_ok=True)
     Path(f"ci-data/{name}.json").write_text(json.dumps(data))
     if below_minimum:
-        raise SystemExit(f"SQLite app/ line coverage {display(data['coverage'])} is below the {minimum:g}% minimum")
+        raise SystemExit(
+            f"SQLite app/ line coverage is {covered}/{statements} executable lines "
+            f"({display(data['coverage'])}); minimum is {minimum}%"
+        )
 
 
 def display(value):
     return "Not available" if value is None else str(value)
+
+
+def verify_coverage():
+    minimum = os.environ.get("MIN_LINE_COVERAGE")
+    data = json.loads(Path("ci-data/sqlite.json").read_text())
+    covered = data.get("covered_statements")
+    total = data.get("total_statements")
+    if minimum is None or not coverage_meets_minimum(covered, total, minimum):
+        raise SystemExit(
+            f"SQLite app/ line coverage is {display(covered)}/{display(total)} executable lines; "
+            f"minimum is {display(minimum)}%"
+        )
 
 
 def status(value):
@@ -87,10 +121,18 @@ def render(repo):
     passed = total - failures - skipped if None not in (total, failures, skipped) else None
     minimum = os.environ.get("MIN_LINE_COVERAGE")
     measured = version_source.get("coverage")
-    coverage_result = "Not available" if measured is None or minimum is None else "Passed" if float(measured.rstrip("%")) >= float(minimum) else "Failed"
+    covered = version_source.get("covered_statements")
+    statements = version_source.get("total_statements")
+    coverage_result = (
+        "Not available"
+        if minimum is None or covered is None or statements is None
+        else "Passed"
+        if coverage_meets_minimum(covered, statements, minimum)
+        else "Failed"
+    )
     lines = [f"# {'🔴 CI failed' if failed else '🟢 CI passed'}", "",
              "| Tests · SQLite | Line coverage | Checks |", "| :--- | :--- | :--- |",
-             f"| **{display(passed)} / {display(total)} passed**<br>{display(skipped)} skipped | **{display(measured)}**<br>`app/` · minimum {minimum + '%' if minimum else 'Not available'} · {coverage_result} | **{len(jobs) - len(failed)} / {len(jobs)} passed** |",
+             f"| **{display(passed)} / {display(total)} passed**<br>{display(skipped)} skipped | **{display(measured)}**<br>`app/` · {display(covered)} / {display(statements)} executable lines · minimum {minimum + '%' if minimum else 'Not available'} · {coverage_result} | **{len(jobs) - len(failed)} / {len(jobs)} passed** |",
              "", f"**Environment:** PHP {display(version_source.get('php'))} · Laravel {display(version_source.get('laravel'))}",
              "", "## Tested databases", "", "| Target | Result | Passed / total | Skipped |", "| --- | --- | ---: | ---: |"]
     for label, key in suites:
@@ -112,5 +154,7 @@ if __name__ == "__main__":
         collect(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == "render":
         render(sys.argv[2])
+    elif sys.argv[1] == "verify":
+        verify_coverage()
     else:
-        raise SystemExit("Expected collect or render")
+        raise SystemExit("Expected collect, render, or verify")

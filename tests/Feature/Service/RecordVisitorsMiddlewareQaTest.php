@@ -99,6 +99,19 @@ class RecordVisitorsMiddlewareQaTest extends TestCase
         $this->assertSame('continued', $response->getContent());
     }
 
+    public function test_production_request_without_a_client_ip_continues_without_dispatching_a_job(): void
+    {
+        $this->app->instance('env', 'production');
+        Queue::fake();
+        $request = Request::create('/no-client-ip');
+
+        $response = $this->middleware()->handle($request, fn () => new Response('continued', 200));
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('continued', $response->getContent());
+        Queue::assertNothingPushed();
+    }
+
     private function assertBlockedWithFailedLogQueue(): void
     {
         Log::shouldReceive('warning')->once()->with('blacklist logging dispatch failure', \Mockery::on(fn (array $context): bool => $context['black_list_id'] === BlackList::where('ip', $this->ip)->value('id') &&

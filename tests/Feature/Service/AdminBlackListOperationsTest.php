@@ -6,9 +6,12 @@ use App\Models\AdminOperationLog;
 use App\Models\BlackList;
 use App\Models\User;
 use App\Service\AdminBlackListOperations;
+use App\Support\IpAddress;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -147,6 +150,50 @@ class AdminBlackListOperationsTest extends TestCase
             $this->assertSame($legacy->id, BlackList::findOrFail($legacy->id)->id);
             $this->assertDatabaseCount('admin_operation_logs', 0);
         }
+    }
+
+    public function test_ipv6_lookup_scans_legacy_text_forms_not_in_the_common_form_list(): void
+    {
+        $legacy = BlackList::withoutEvents(fn () => BlackList::query()->create([
+            'ip' => '2001:0db8:0:0:0:0:0:1',
+        ]));
+
+        $restored = $this->operations->addIp('2001:db8::1');
+
+        $this->assertSame($legacy->id, $restored->id);
+        $this->assertFalse($restored->fresh()->trashed());
+        $this->assertSame(['restore'], AdminOperationLog::pluck('action')->all());
+    }
+
+    public function test_ipv6_lookup_returns_null_when_no_equivalent_record_exists(): void
+    {
+        $this->assertNull(IpAddress::findBlacklistRecord(BlackList::query(), '2001:db8::2'));
+    }
+
+    public function test_update_of_a_soft_deleted_record_is_not_found(): void
+    {
+        $record = BlackList::create(['ip' => '203.0.113.70']);
+        $record->delete();
+
+        $this->expectException(ModelNotFoundException::class);
+        $this->operations->update($record, ['ip' => '203.0.113.71']);
+    }
+
+    public function test_non_blacklist_unique_database_errors_are_rethrown(): void
+    {
+        $exception = new QueryException('testing', 'insert into black_lists', [], new \PDOException('another unique constraint'));
+        $exception->errorInfo = ['23000', 19, 'users.email_unique'];
+        Event::listen('eloquent.saving: '.BlackList::class, fn () => throw $exception);
+
+        try {
+            $this->operations->create(['ip' => '203.0.113.72']);
+            $this->fail('An unrelated unique constraint must remain a database error.');
+        } catch (QueryException $caught) {
+            $this->assertSame($exception, $caught);
+        }
+
+        $this->assertDatabaseCount('black_lists', 0);
+        $this->assertDatabaseCount('admin_operation_logs', 0);
     }
 
     public function test_unique_index_race_is_reported_as_ip_validation_error(): void

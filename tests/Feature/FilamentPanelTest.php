@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Filament\Auth\Pages\Login;
+use Filament\Panel;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -35,6 +36,13 @@ class FilamentPanelTest extends TestCase
         $response = $this->actingAs($user)->get('/admin');
 
         $response->assertSuccessful();
+    }
+
+    public function test_user_cannot_access_a_non_admin_panel(): void
+    {
+        $user = User::factory()->create();
+
+        $this->assertFalse($user->canAccessPanel(Panel::make()->id('staff')));
     }
 
     public function test_admin_can_log_in_via_filament_login_page(): void

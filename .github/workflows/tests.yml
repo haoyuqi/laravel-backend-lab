@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      MIN_LINE_COVERAGE: '85'
+      MIN_LINE_COVERAGE: '100'
 
     services:
       redis:
@@ -162,6 +162,9 @@ jobs:
 
       - name: Prepare application directories
         run: chmod -R 777 storage bootstrap/cache
+
+      - name: Test CI coverage threshold
+        run: python3 -m unittest discover -s .github/scripts -p 'test_ci_summary.py'
 
       - name: Run PHP tests
         run: |
@@ -515,7 +518,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      MIN_LINE_COVERAGE: '85'
+      MIN_LINE_COVERAGE: '100'
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -534,6 +537,8 @@ jobs:
         run: |
           printf '%s' "$NEEDS_JSON" > ci-needs.json
           python3 .github/scripts/ci-summary.py render lab
+      - name: Enforce exact SQLite line coverage
+        run: python3 .github/scripts/ci-summary.py verify
       - name: Require every check to succeed
         env:
           PINT_RESULT: ${{ needs.pint.result }}
