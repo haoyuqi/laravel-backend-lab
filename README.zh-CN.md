@@ -7,6 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml"><img alt="测试状态" src="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml/badge.svg?branch=master"></a>
+  <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml?query=branch%3Amaster"><img alt="覆盖率" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fhaoyuqi%2Flaravel-backend-lab%2Fcoverage-badge%2Fcoverage.json"></a>
   <a href="https://www.php.net/"><img alt="PHP 8.4 或更高版本" src="https://img.shields.io/badge/PHP-%5E8.4-777BB4?logo=php&logoColor=white"></a>
   <a href="https://laravel.com/"><img alt="Laravel 13" src="https://img.shields.io/badge/Laravel-13.x-FF2D20?logo=laravel&logoColor=white"></a>
   <a href="https://filamentphp.com/"><img alt="Filament 5" src="https://img.shields.io/badge/Filament-5.x-FDAE4B"></a>
@@ -267,9 +268,8 @@ php artisan queue:work --queue=push-time
 
 默认测试套件使用独立的 `testing` 连接和内存 SQLite 数据库，不会使用主要开发数据库。
 
-`app/` 的行覆盖率为 **91.55%**，由 SQLite PHPUnit 任务在
-[2026-10-22 的 CI 运行](https://github.com/haoyuqi/laravel-backend-lab/actions/runs/39708654277)
-中测得（最低要求：85%）。
+上方覆盖率徽章会在默认分支每次 CI 成功后自动更新，显示 SQLite PHPUnit
+测得的 `app/` 行覆盖率（最低要求：85%）。
 
 GitHub Actions 会在拉取请求和推送到 `master` 时运行测试。每日任务安排在
 北京时间 03:46，只在默认分支 `master` 上运行。每次运行的摘要展示实测的
