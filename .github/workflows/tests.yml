@@ -107,6 +107,8 @@ jobs:
     name: SQLite tests (PHP 8.4)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      MIN_LINE_COVERAGE: '85'
 
     services:
       redis:
@@ -499,6 +501,8 @@ jobs:
     needs: [pint, production-smoke, sqlite-tests, php-tests, security-checks, browser-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      MIN_LINE_COVERAGE: '85'
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
