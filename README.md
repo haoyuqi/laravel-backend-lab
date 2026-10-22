@@ -126,7 +126,7 @@ schedule is configured. See [UPGRADE.md](UPGRADE.md) before deploying.
 
 The application requires:
 
-- PHP 8.4.27 or later, or PHP 8.5.12 or later, with the extensions required by `composer.lock`;
+- PHP 8.4.x (8.4.27 or later), or PHP 8.5 and later PHP 8.x versions (8.5.12 or later), with the extensions required by `composer.lock`;
 - Composer 2;
 - Node.js 24 LTS (24.22.1 or later) and npm;
 - SQLite, MySQL, or PostgreSQL for persistent application data;

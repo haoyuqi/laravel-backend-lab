@@ -105,7 +105,7 @@ php artisan admin-operation-logs:prune --days=365
 
 应用需要：
 
-- PHP 8.4.27 或更高版本，或 PHP 8.5.12 或更高版本，以及 `composer.lock` 所要求的 PHP 扩展；
+- PHP 8.4.x（最低 8.4.27），或 PHP 8.5 及之后的 PHP 8.x 版本（最低 8.5.12），以及 `composer.lock` 所要求的 PHP 扩展；
 - Composer 2；
 - Node.js 24 LTS（24.22.1 或更高版本）和 npm；
 - SQLite、MySQL 或 PostgreSQL，用于持久化应用数据；
