@@ -307,6 +307,10 @@ assets afterwards with `npm run build`.
 The default test suite uses a dedicated `testing` connection backed by an
 in-memory SQLite database. It does not use the primary development database.
 
+Line coverage for `app/`: **91.55%**, measured by the SQLite PHPUnit job in the
+[CI run on 2026-10-22](https://github.com/haoyuqi/laravel-backend-lab/actions/runs/39708654277)
+(required minimum: 85%).
+
 ```bash
 php artisan test
 ./vendor/bin/pint --test
