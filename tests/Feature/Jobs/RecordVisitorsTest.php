@@ -93,5 +93,4 @@ class RecordVisitorsTest extends TestCase
 
         $this->assertSame(1, $visitor->logs()->where('url', '/legacy-retry')->count());
     }
-
 }

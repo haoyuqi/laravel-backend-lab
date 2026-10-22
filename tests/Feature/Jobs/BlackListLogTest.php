@@ -4,7 +4,9 @@ namespace Tests\Feature\Jobs;
 
 use App\Jobs\BlackListLog;
 use App\Models\BlackList;
+use App\Models\BlackListLog as BlackListLogModel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
@@ -60,6 +62,31 @@ class BlackListLogTest extends TestCase
         ]);
     }
 
+    public function test_mismatched_blacklist_log_relation_result_throws(): void
+    {
+        $blackList = BlackList::create(['ip' => '203.0.113.45']);
+        $otherBlackList = BlackList::create(['ip' => '203.0.113.46']);
+        $eventId = 'd5797fc3-4d13-4cdb-9826-9d5b273ce1f3';
+        BlackListLogModel::create([
+            'black_list_id' => $blackList->id,
+            'event_id' => $eventId,
+            'url' => '/blocked',
+        ]);
+
+        Event::listen('eloquent.retrieved: '.BlackListLogModel::class, function (BlackListLogModel $log) use ($eventId, $otherBlackList): void {
+            if ($log->event_id === $eventId) {
+                $log->black_list_id = $otherBlackList->id;
+            }
+        });
+
+        $job = new BlackListLog($blackList->id, '/blocked');
+        (new \ReflectionProperty(BlackListLog::class, 'eventId'))->setValue($job, $eventId);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Blacklist log event is already associated with another blacklist.');
+        $job->handle();
+    }
+
     public function test_missing_target_is_logged_and_skipped(): void
     {
         Log::shouldReceive('error')->once()->with('black list log queue error.');
@@ -69,5 +96,4 @@ class BlackListLogTest extends TestCase
 
         $this->assertDatabaseCount('black_list_logs', 0);
     }
-
 }

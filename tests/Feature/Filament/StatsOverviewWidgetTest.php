@@ -306,16 +306,21 @@ class StatsOverviewWidgetTest extends TestCase
 
     public function test_health_widget_reports_the_configured_database_when_connection_fails(): void
     {
+        $previousConnection = config('database.default');
         config(['database.default' => 'pgsql']);
         DB::shouldReceive('connection')->once()->andThrow(new Exception('Connection unavailable'));
         DB::shouldReceive('select')->once()->with('SELECT 1')->andThrow(new Exception('Connection unavailable'));
         $method = new \ReflectionMethod(HealthStatusWidget::class, 'checkDatabaseHealth');
 
-        $status = $method->invoke(new HealthStatusWidget);
+        try {
+            $status = $method->invoke(new HealthStatusWidget);
 
-        $this->assertSame('unhealthy', $status['status']);
-        $this->assertSame('PostgreSQL', $status['name']);
-        $this->assertSame('pgsql', $status['driver']);
-        $this->assertSame('--', $status['latency']);
+            $this->assertSame('unhealthy', $status['status']);
+            $this->assertSame('PostgreSQL', $status['name']);
+            $this->assertSame('pgsql', $status['driver']);
+            $this->assertSame('--', $status['latency']);
+        } finally {
+            config(['database.default' => $previousConnection]);
+        }
     }
 }

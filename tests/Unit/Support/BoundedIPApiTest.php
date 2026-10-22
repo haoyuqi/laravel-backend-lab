@@ -5,8 +5,8 @@ namespace Tests\Unit\Support;
 use App\Libraries\GetCityByIp\BoundedIPApi;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Response;
-use RuntimeException;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 class BoundedIPApiTest extends TestCase
 {

@@ -103,7 +103,8 @@ class RecordVisitorsMiddlewareQaTest extends TestCase
     {
         $this->app->instance('env', 'production');
         Queue::fake();
-        $request = Request::create('/no-client-ip');
+        $request = Request::create('/no-client-ip', server: ['REMOTE_ADDR' => null]);
+        $this->assertNull($request->getClientIp());
 
         $response = $this->middleware()->handle($request, fn () => new Response('continued', 200));
 
