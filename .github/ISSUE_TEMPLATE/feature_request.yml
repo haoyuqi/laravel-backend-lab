@@ -1,6 +1,6 @@
 name: Feature request
 description: Suggest an improvement to the Laravel multi-module reference application.
-title: "feat: "
+title: "[Feature] "
 labels:
   - enhancement
 body:

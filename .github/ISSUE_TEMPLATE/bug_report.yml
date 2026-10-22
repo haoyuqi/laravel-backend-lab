@@ -1,23 +1,15 @@
 name: Bug report
 description: Report a problem in the Laravel multi-module reference application.
-title: "fix: "
+title: "[Bug] "
 labels:
   - bug
 body:
-  - type: input
-    id: module
-    attributes:
-      label: Affected module
-      description: Name the affected module.
-      placeholder: Module name
-    validations:
-      required: true
   - type: textarea
     id: problem
     attributes:
       label: Problem
-      description: Describe what is going wrong.
-      placeholder: What happened?
+      description: Name the affected module and describe the problem, including what happened.
+      placeholder: Affected module and actual behavior
     validations:
       required: true
   - type: textarea
@@ -38,13 +30,6 @@ body:
     validations:
       required: true
   - type: textarea
-    id: actual
-    attributes:
-      label: Actual behavior
-      description: What happened instead?
-    validations:
-      required: true
-  - type: textarea
     id: affected_versions
     attributes:
       label: Affected versions and commit
@@ -62,6 +47,6 @@ body:
     id: attachments
     attributes:
       label: Logs or screenshots (optional)
-      description: Add relevant logs or screenshots if they help explain the problem.
+      description: Add relevant logs or screenshots if they help explain the problem. Remove credentials and personal data before sharing.
     validations:
       required: false
