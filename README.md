@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml/badge.svg?branch=master"></a>
   <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml?query=branch%3Amaster"><img alt="Coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fhaoyuqi%2Flaravel-backend-lab%2Fcoverage-badge%2Fcoverage.json"></a>
-  <a href="https://www.php.net/"><img alt="PHP 8.4 or later" src="https://img.shields.io/badge/PHP-%5E8.4-777BB4?logo=php&logoColor=white"></a>
+  <a href="https://www.php.net/"><img alt="PHP 8.4.27+ or 8.5.12+" src="https://img.shields.io/badge/PHP-8.4.27%2B%20%7C%208.5.12%2B-777BB4?logo=php&logoColor=white"></a>
   <a href="https://laravel.com/"><img alt="Laravel 13" src="https://img.shields.io/badge/Laravel-13.x-FF2D20?logo=laravel&logoColor=white"></a>
   <a href="https://filamentphp.com/"><img alt="Filament 5" src="https://img.shields.io/badge/Filament-5.x-FDAE4B"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/haoyuqi/laravel-backend-lab"></a>
@@ -126,9 +126,9 @@ schedule is configured. See [UPGRADE.md](UPGRADE.md) before deploying.
 
 The application requires:
 
-- PHP 8.4 or later, with the extensions required by `composer.lock`;
+- PHP 8.4.x (8.4.27 or later), or PHP 8.5 and later PHP 8.x versions (8.5.12 or later), with the extensions required by `composer.lock`;
 - Composer 2;
-- Node.js 24 LTS and npm;
+- Node.js 24 LTS (24.22.1 or later) and npm;
 - SQLite, MySQL, or PostgreSQL for persistent application data;
 - Redis for visitor statistics and related scheduled jobs;
 - a web server supported by Laravel in production.

@@ -31,6 +31,8 @@ jobs:
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        env:
+          update: 'true'
         with:
           php-version: '8.4'
           extensions: mbstring
@@ -75,6 +77,8 @@ jobs:
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        env:
+          update: 'true'
         with:
           php-version: '8.4'
           extensions: redis, pdo_sqlite
@@ -129,6 +133,8 @@ jobs:
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        env:
+          update: 'true'
         with:
           php-version: '8.4'
           extensions: redis, pdo, pdo_sqlite
@@ -276,6 +282,8 @@ jobs:
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        env:
+          update: 'true'
         with:
           php-version: ${{ matrix.php-version }}
           extensions: redis, pdo, pdo_mysql, pdo_pgsql, pdo_sqlite
@@ -341,6 +349,8 @@ jobs:
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        env:
+          update: 'true'
         with:
           php-version: '8.4'
           tools: composer:v2
@@ -358,7 +368,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '24'
+          node-version: '^24.22.1'
+          check-latest: true
           cache: npm
 
       - name: Audit Node dependencies
@@ -372,7 +383,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node-version: ['24']
+        node-version: ['^24.22.1']
 
     services:
       postgres:
@@ -406,6 +417,8 @@ jobs:
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        env:
+          update: 'true'
         with:
           php-version: '8.4'
           extensions: redis, pdo_pgsql
@@ -416,6 +429,7 @@ jobs:
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: ${{ matrix.node-version }}
+          check-latest: true
           cache: npm
           cache-dependency-path: package-lock.json
 
