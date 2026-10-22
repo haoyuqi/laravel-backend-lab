@@ -6,7 +6,8 @@ on:
       - master
   pull_request:
   schedule:
-    - cron: '0 0 * * *'
+    # 19:46 UTC is 03:46 Asia/Shanghai on the following day.
+    - cron: '46 19 * * *'
   workflow_dispatch:
 
 permissions:
@@ -106,6 +107,8 @@ jobs:
     name: SQLite tests (PHP 8.4)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      MIN_LINE_COVERAGE: '85'
 
     services:
       redis:
@@ -130,7 +133,7 @@ jobs:
           php-version: '8.4'
           extensions: redis, pdo, pdo_sqlite
           tools: composer:v2
-          coverage: none
+          coverage: pcov
 
       - name: Cache Composer downloads
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -153,10 +156,35 @@ jobs:
         run: chmod -R 777 storage bootstrap/cache
 
       - name: Run PHP tests
-        run: php artisan test
+        run: |
+          mkdir -p ci-data
+          ./vendor/bin/phpunit --log-junit ci-data/junit.xml --coverage-clover ci-data/coverage.xml --coverage-html ci-data/coverage-html
         env:
           TEST_DB_CONNECTION: sqlite
           TEST_DB_DATABASE: ':memory:'
+
+      - name: Collect SQLite metrics
+        if: ${{ always() }}
+        run: python3 .github/scripts/ci-summary.py collect sqlite '${{ job.status }}'
+
+      - name: Upload SQLite metrics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-data-sqlite
+          path: ci-data/sqlite.json
+          retention-days: 7
+
+      - name: Upload PHP coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: php-coverage
+          path: |
+            ci-data/coverage.xml
+            ci-data/coverage-html/
+          if-no-files-found: ignore
+          retention-days: 7
 
   php-tests:
     name: PHP tests (PHP ${{ matrix.php-version }}, ${{ matrix.db.name }} ${{ matrix.db.version }})
@@ -164,7 +192,7 @@ jobs:
     timeout-minutes: 20
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         php-version: ['8.4']
         db:
@@ -275,7 +303,9 @@ jobs:
         run: chmod -R 777 storage bootstrap/cache
 
       - name: Run PHP tests
-        run: php artisan test
+        run: |
+          mkdir -p ci-data
+          ./vendor/bin/phpunit --log-junit ci-data/junit.xml
         env:
           # The service initializes only `laravel`; migrations must create
           # the separate `laravel_test` database on the first test run.
@@ -285,6 +315,18 @@ jobs:
           TEST_DB_DATABASE: ${{ matrix.db.test-db-name }}
           TEST_DB_USERNAME: ${{ matrix.db.test-db-user }}
           TEST_DB_PASSWORD: ${{ matrix.db.test-db-password }}
+
+      - name: Collect database metrics
+        if: ${{ always() }}
+        run: python3 .github/scripts/ci-summary.py collect '${{ matrix.db.name }}-${{ matrix.db.version }}' '${{ job.status }}'
+
+      - name: Upload database metrics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-data-${{ matrix.db.name }}-${{ matrix.db.version }}
+          path: ci-data/${{ matrix.db.name }}-${{ matrix.db.version }}.json
+          retention-days: 7
 
   security-checks:
     name: Security checks
@@ -319,11 +361,8 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: Install Node dependencies
-        run: npm ci --ignore-scripts
-
       - name: Audit Node dependencies
-        run: npm audit
+        run: npm audit --package-lock-only
 
   browser-tests:
     name: Browser tests (Node ${{ matrix.node-version }})
@@ -459,7 +498,26 @@ jobs:
     needs: [pint, production-smoke, sqlite-tests, php-tests, security-checks, browser-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      MIN_LINE_COVERAGE: '85'
     steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download CI metrics
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        continue-on-error: true
+        with:
+          pattern: ci-data-*
+          path: ci-data
+          merge-multiple: true
+      - name: Write run summary
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          printf '%s' "$NEEDS_JSON" > ci-needs.json
+          python3 .github/scripts/ci-summary.py render lab
       - name: Require every check to succeed
         env:
           PINT_RESULT: ${{ needs.pint.result }}

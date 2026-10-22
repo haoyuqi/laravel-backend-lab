@@ -267,6 +267,10 @@ php artisan queue:work --queue=push-time
 
 默认测试套件使用独立的 `testing` 连接和内存 SQLite 数据库，不会使用主要开发数据库。
 
+`app/` 的行覆盖率为 **91.55%**，由 SQLite PHPUnit 任务在
+[2026-10-22 的 CI 运行](https://github.com/haoyuqi/laravel-backend-lab/actions/runs/39708654277)
+中测得（最低要求：85%）。
+
 ```bash
 php artisan test
 ./vendor/bin/pint --test
