@@ -13,6 +13,9 @@ class TelescopeRedactionTest extends TestCase
     public function test_telescope_records_local_entries_and_only_selected_production_entries(): void
     {
         $previousFilters = Telescope::$filterUsing;
+        $previousHiddenRequestParameters = Telescope::$hiddenRequestParameters;
+        $previousHiddenResponseParameters = Telescope::$hiddenResponseParameters;
+        $previousHiddenRequestHeaders = Telescope::$hiddenRequestHeaders;
         try {
             $this->app->instance('env', 'local');
             (new TelescopeServiceProvider($this->app))->register();
@@ -43,13 +46,18 @@ class TelescopeRedactionTest extends TestCase
             $this->assertFalse($filter($entry));
         } finally {
             Telescope::$filterUsing = $previousFilters;
+            Telescope::$hiddenRequestParameters = $previousHiddenRequestParameters;
+            Telescope::$hiddenResponseParameters = $previousHiddenResponseParameters;
+            Telescope::$hiddenRequestHeaders = $previousHiddenRequestHeaders;
         }
     }
 
     public function test_livewire_credentials_and_snapshots_are_redacted_even_locally(): void
     {
+        $previousFilters = Telescope::$filterUsing;
         $previousHiddenRequestParameters = Telescope::$hiddenRequestParameters;
         $previousHiddenResponseParameters = Telescope::$hiddenResponseParameters;
+        $previousHiddenRequestHeaders = Telescope::$hiddenRequestHeaders;
         try {
             $this->app->instance('env', 'local');
             (new TelescopeServiceProvider($this->app))->register();
@@ -71,8 +79,10 @@ class TelescopeRedactionTest extends TestCase
             $this->assertSame('********', $redacted['_token']);
             $this->assertContains('components', Telescope::$hiddenResponseParameters);
         } finally {
+            Telescope::$filterUsing = $previousFilters;
             Telescope::$hiddenRequestParameters = $previousHiddenRequestParameters;
             Telescope::$hiddenResponseParameters = $previousHiddenResponseParameters;
+            Telescope::$hiddenRequestHeaders = $previousHiddenRequestHeaders;
         }
     }
 }
