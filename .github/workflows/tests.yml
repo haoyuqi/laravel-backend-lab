@@ -455,8 +455,24 @@ jobs:
       - name: Install Node dependencies
         run: npm ci --quiet
 
-      - name: Install Playwright Browsers & Deps
-        run: npx playwright install --with-deps
+      - name: Prefer Ubuntu HTTPS package mirrors
+        run: |
+          # The runner's preferred Azure HTTP mirror can stall large font downloads.
+          # Keep Ubuntu's signed repositories and use its official HTTPS endpoints.
+          if [[ -f /etc/apt/apt-mirrors.txt ]]; then
+            printf '%s\n' \
+              'https://archive.ubuntu.com/ubuntu/ priority:1' \
+              'https://security.ubuntu.com/ubuntu/ priority:2' \
+              | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          fi
+
+      - name: Install Playwright system dependencies
+        timeout-minutes: 8
+        run: npx playwright install-deps
+
+      - name: Install Playwright browsers
+        timeout-minutes: 8
+        run: npx playwright install
 
       - name: Build frontend assets
         run: npm run build
