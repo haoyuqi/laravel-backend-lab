@@ -154,9 +154,13 @@ class AdminBlackListOperationsTest extends TestCase
 
     public function test_ipv6_lookup_scans_legacy_text_forms_not_in_the_common_form_list(): void
     {
-        $legacy = BlackList::withoutEvents(fn () => BlackList::query()->create([
-            'ip' => '2001:0db8:0:0:0:0:0:1',
-        ]));
+        $legacy = BlackList::withoutEvents(function () {
+            $record = new BlackList(['ip' => '2001:0db8:0:0:0:0:0:1']);
+            $record->forceFill(['deleted_at' => now()->subDay()]);
+            $record->save();
+
+            return $record;
+        });
 
         $restored = $this->operations->addIp('2001:db8::1');
 

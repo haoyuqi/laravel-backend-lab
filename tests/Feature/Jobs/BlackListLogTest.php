@@ -67,8 +67,7 @@ class BlackListLogTest extends TestCase
         $blackList = BlackList::create(['ip' => '203.0.113.45']);
         $otherBlackList = BlackList::create(['ip' => '203.0.113.46']);
         $eventId = 'd5797fc3-4d13-4cdb-9826-9d5b273ce1f3';
-        BlackListLogModel::create([
-            'black_list_id' => $blackList->id,
+        $blackList->logs()->create([
             'event_id' => $eventId,
             'url' => '/blocked',
         ]);
