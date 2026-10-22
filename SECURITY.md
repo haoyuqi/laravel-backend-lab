@@ -5,8 +5,9 @@
 Security fixes are provided for the latest release on `master`. Please upgrade
 older deployments before reporting an issue that has already been fixed.
 
-The `develop` branch contains unreleased changes. Reports affecting `develop`
-are also welcome, but it is not a supported production release.
+`master` is the only long-lived code branch and may contain unreleased changes.
+Reports affecting its latest commit are also welcome. Production deployments
+should use an immutable release tag.
 
 ## Reporting a Vulnerability
 
@@ -27,8 +28,10 @@ response deadline or offer a bug bounty.
 
 ## Repository Automation
 
-Ordinary GitHub Actions workflows use a read-only `GITHUB_TOKEN`. Only the
-Dependabot auto-merge job receives `contents: write` and `pull-requests: write`.
+Ordinary GitHub Actions workflows use a read-only `GITHUB_TOKEN`. The coverage
+publisher receives `contents: write` to update the automated `coverage-badge`
+data branch after successful default-branch CI. The Dependabot auto-merge job
+receives `contents: write` and `pull-requests: write`.
 It verifies Dependabot metadata using an Action pinned to a commit SHA and
 never checks out or runs pull request code. Workflows cannot approve pull
 requests.

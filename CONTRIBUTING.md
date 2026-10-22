@@ -34,44 +34,38 @@ All pull requests should be submitted from a feature or bugfix branch. Please us
 *   `fix/82-visitor-log-error`
 *   `chore/88-remove-deprecated-packages`
 
-### Long-lived Branches
+### Main Branch and Pull Requests
 
-The repository maintains the following permanent long-lived branches:
+`master` is the only long-lived code branch. Create short-lived feature, fix,
+or maintenance branches from the latest `master`, then open pull requests
+directly against `master`. Use the same flow for major upgrades; split large
+changes into independently verifiable pull requests.
 
-| Branch | Purpose |
-|--------|---------|
-| `master` | Stable, production-ready code. Always reflects the latest tagged release. Never committed to directly. |
-| `develop` | Integration branch for ongoing development. All routine feature branches target here. |
+The automatically maintained `coverage-badge` branch stores measured coverage
+for the README badge. It is not a development branch or a pull request target.
 
-When a major refactoring or version upgrade is planned, a dedicated release branch (e.g. `2.x`) is created. All related PRs target this branch instead of `develop`. Once the milestone is complete, the release branch is merged into `develop`, then `develop` is merged into `master` and a version tag is created (e.g. `v2.0.0`). The release branch is then deleted.
-
-**Merge flow:**
-```
-feat/* ──► develop ──► master   (routine development)
-feat/* ──► 2.x ──► develop ──► master   (major version refactoring)
+```text
+feat/*, fix/*, chore/* ──► master
 ```
 
-`develop` requires a pull request, an up-to-date branch, successful checks, and
-resolution of review conversations. These rules also apply to administrators;
-do not push directly to `develop`. Reviewer approvals are not mandatory so the
-maintainer can merge their own pull requests after validation.
+Do not push directly to `master`. Its protection requires a pull request,
+an up-to-date branch, and the successful `CI result` check. Reviewer approvals
+are not mandatory, so the maintainer can merge their own pull requests after
+validation. GitHub automatically deletes the source branch after merging.
 
-Both `develop` and `master` require `CI result`. It succeeds only when Laravel
+`CI result` succeeds only when Laravel
 Pint, the production installation smoke test, SQLite tests, every PHP database
 matrix job, security checks, and browser tests all succeed. A failed, cancelled,
 or skipped job blocks merging.
 
-Promote releases through a `develop` → `master` pull request, then create the
-release tag. Before promotion, bring any commits unique to `master` into
-`develop` through a pull request. When the branches differ only in merge
-history, include a meaningful development change in that sync PR so GitHub
-has a file difference to review. Changing CI check names requires updating
-branch protection in the same rollout.
+Create release tags from validated commits on `master`; production deployments
+should use immutable release tags. `master` may include changes made since the
+latest release. Changing CI check names requires updating branch protection
+in the same rollout.
 
-Dependabot security updates targeting the default branch are an exception to
-the routine PR target. Only Composer and npm patch updates that change dependency
-manifests or lockfiles are eligible for automatic merging after `CI result`
-passes. Minor, major, pre-release, and unrecognized updates require manual
+Dependabot updates also target `master`. Only Composer and npm patch updates
+that change dependency manifests or lockfiles are eligible for automatic
+merging after `CI result` passes. Minor, major, pre-release, and unrecognized updates require manual
 review and merge. See [SECURITY.md](SECURITY.md) for the automation policy and
 private vulnerability reporting process.
 
@@ -96,7 +90,7 @@ Commit messages should follow the [Conventional Commits](https://www.conventiona
 *   Write tests for your changes, if applicable.
 *   Make sure all tests pass before submitting the PR.
 *   Keep pull requests small and focused on a single issue.
-*   Target the correct base branch: use `develop` for routine work, or the active release branch (e.g. `2.x`) for major version refactoring. Do not open PRs directly against `master`.
+*   Target `master` for all pull requests, including major version upgrades.
 
 ## Code of Conduct
 
