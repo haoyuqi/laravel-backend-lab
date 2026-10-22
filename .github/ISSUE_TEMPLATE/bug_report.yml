@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a problem in the Laravel multi-module reference application.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Name the affected module and describe the problem, including what happened.
+      placeholder: Affected module and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide the shortest steps that reproduce the problem.
+      placeholder: |-
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: affected_versions
+    attributes:
+      label: Affected versions and commit
+      description: Include the affected commit SHA and actual installed versions of PHP, Laravel, and any relevant database, Redis, or browser. Include only relevant components and do not prefix version numbers with v.
+      placeholder: |-
+        Commit:
+        PHP:
+        Laravel:
+        Database (if relevant):
+        Redis (if relevant):
+        Browser (if relevant):
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Logs or screenshots (optional)
+      description: Add relevant logs or screenshots if they help explain the problem. Remove credentials and personal data before sharing.
+    validations:
+      required: false
