@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml"><img alt="测试状态" src="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml/badge.svg?branch=master"></a>
   <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml?query=branch%3Amaster"><img alt="覆盖率" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fhaoyuqi%2Flaravel-backend-lab%2Fcoverage-badge%2Fcoverage.json"></a>
-  <a href="https://www.php.net/"><img alt="PHP 8.4 或更高版本" src="https://img.shields.io/badge/PHP-%5E8.4-777BB4?logo=php&logoColor=white"></a>
+  <a href="https://www.php.net/"><img alt="PHP 8.4.27+ 或 8.5.12+" src="https://img.shields.io/badge/PHP-8.4.27%2B%20%7C%208.5.12%2B-777BB4?logo=php&logoColor=white"></a>
   <a href="https://laravel.com/"><img alt="Laravel 13" src="https://img.shields.io/badge/Laravel-13.x-FF2D20?logo=laravel&logoColor=white"></a>
   <a href="https://filamentphp.com/"><img alt="Filament 5" src="https://img.shields.io/badge/Filament-5.x-FDAE4B"></a>
   <a href="LICENSE"><img alt="MIT 许可证" src="https://img.shields.io/github/license/haoyuqi/laravel-backend-lab"></a>
@@ -105,9 +105,9 @@ php artisan admin-operation-logs:prune --days=365
 
 应用需要：
 
-- PHP 8.4 或更高版本，以及 `composer.lock` 所要求的 PHP 扩展；
+- PHP 8.4.27 或更高版本，或 PHP 8.5.12 或更高版本，以及 `composer.lock` 所要求的 PHP 扩展；
 - Composer 2；
-- Node.js 24 LTS 和 npm；
+- Node.js 24 LTS（24.22.1 或更高版本）和 npm；
 - SQLite、MySQL 或 PostgreSQL，用于持久化应用数据；
 - Redis，用于访客统计和相关定时任务；
 - 生产环境中需要 Laravel 支持的 Web 服务器。
