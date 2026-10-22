@@ -11,7 +11,7 @@ class BingWallpaper implements BingWallpaperInterface
 {
     public function download(): string
     {
-        $client = new Client(['connect_timeout' => 5, 'timeout' => 15]);
+        $client = $this->makeClient();
         $response = $client->request('GET', 'https://bing.ioliu.cn/v1?w=1920&h=1200');
 
         $content = (string) $response->getBody()->getContents();
@@ -20,6 +20,11 @@ class BingWallpaper implements BingWallpaperInterface
         }
 
         return $content;
+    }
+
+    protected function makeClient(): Client
+    {
+        return new Client(['connect_timeout' => 5, 'timeout' => 15]);
     }
 
     public function save($content, $save_path, $file_name = null): bool

@@ -5,8 +5,10 @@ namespace Tests\Feature\Jobs;
 use App\Jobs\RecordVisitors;
 use App\Libraries\GetCityByIp\GetCityByIpAbstract;
 use App\Models\Visitor;
+use App\Models\VisitorLog;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class RecordVisitorsTest extends TestCase
@@ -74,6 +76,27 @@ class RecordVisitorsTest extends TestCase
         $job->handle($geo);
 
         $this->assertSame(1, $visitor->logs()->where('url', '/retry')->count());
+    }
+
+    public function test_mismatched_visitor_log_relation_result_throws(): void
+    {
+        $visitor = Visitor::create(['ip' => '203.0.113.16', 'city' => 'Target']);
+        $otherVisitor = Visitor::create(['ip' => '203.0.113.17', 'city' => 'Other']);
+        $eventId = '523cb0c1-22b9-46cb-b091-d0451fba8e55';
+        $visitor->logs()->create(['event_id' => $eventId, 'url' => '/existing']);
+
+        Event::listen('eloquent.retrieved: '.VisitorLog::class, function (VisitorLog $log) use ($eventId, $otherVisitor): void {
+            if ($log->event_id === $eventId) {
+                $log->visitor_id = $otherVisitor->id;
+            }
+        });
+
+        $job = new RecordVisitors($visitor->ip, '/existing');
+        (new \ReflectionProperty(RecordVisitors::class, 'eventId'))->setValue($job, $eventId);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Visitor log event is already associated with another visitor.');
+        $job->handle($this->mock(GetCityByIpAbstract::class));
     }
 
     public function test_legacy_job_without_event_id_uses_the_stable_queue_uuid(): void

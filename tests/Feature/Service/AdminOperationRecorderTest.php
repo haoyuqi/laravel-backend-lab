@@ -6,6 +6,7 @@ use App\Models\AdminOperationLog;
 use App\Models\AuditFixture;
 use App\Models\AuditSoftFixture;
 use App\Models\User;
+use App\Observers\AdminOperationObserver;
 use App\Service\AdminOperationRecorder;
 use App\Support\AdminOperationContext;
 use Illuminate\Database\Schema\Blueprint;
@@ -195,6 +196,115 @@ class AdminOperationRecorderTest extends TestCase
         app(AdminOperationRecorder::class)->explicit($fixture, 'update', fn ($current) => $current->update(['name' => 'After']));
         $this->assertDatabaseCount('admin_operation_logs', 1);
         $this->assertSame('After', AdminOperationLog::sole()->after['name']);
+    }
+
+    public function test_nested_audit_context_rejects_another_actor_and_connection_and_cleans_up(): void
+    {
+        $context = app(AdminOperationContext::class);
+        $actor = auth()->user();
+        $otherActor = User::factory()->create();
+        $connection = DB::connection()->getName();
+
+        $context->within($actor, 'fixture.outer', $connection, function () use ($context, $actor, $otherActor, $connection): void {
+            try {
+                $context->within($otherActor, 'fixture.inner', $connection, fn () => null);
+                $this->fail('A nested operation cannot switch actors.');
+            } catch (LogicException $exception) {
+                $this->assertStringContainsString('cannot span actors', $exception->getMessage());
+            }
+
+            try {
+                $context->within($actor, 'fixture.inner', $connection.'-other', fn () => null);
+                $this->fail('A nested operation cannot switch connections.');
+            } catch (LogicException $exception) {
+                $this->assertStringContainsString('cannot span actors', $exception->getMessage());
+            }
+
+            $this->assertSame($actor, $context->actor);
+            $this->assertSame('fixture.outer', $context->actionKey);
+        });
+
+        $this->assertNull($context->actor);
+        $this->assertNull($context->actionKey);
+        $this->assertNull($context->operationId);
+        $this->assertNull($context->connection);
+        $this->assertSame([], $context->pending);
+        $this->assertSame([], $context->explicitSubjects);
+    }
+
+    public function test_explicit_mutation_returning_false_rolls_back_and_clears_context(): void
+    {
+        $fixture = AuditFixture::create(['id' => 'canceled-explicit', 'name' => 'Before', 'status' => 'active']);
+
+        try {
+            app(AdminOperationRecorder::class)->explicit($fixture, 'update', function ($current) {
+                DB::table('audit_fixtures')->where('id', $current->id)->update(['name' => 'After']);
+
+                return false;
+            });
+            $this->fail('A canceled explicit mutation must throw.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Admin operation was canceled.', $exception->getMessage());
+        }
+
+        $this->assertSame('Before', $fixture->fresh()->name);
+        $this->assertDatabaseCount('admin_operation_logs', 0);
+        $this->assertNull(app(AdminOperationContext::class)->actor);
+        $this->assertSame([], app(AdminOperationContext::class)->explicitSubjects);
+    }
+
+    public function test_explicit_relationship_snapshot_rejects_unapproved_fields(): void
+    {
+        $fixture = AuditFixture::create(['id' => 'unsafe-relationship', 'name' => 'Before', 'status' => 'active']);
+
+        $this->expectException(LogicException::class);
+        app(AdminOperationRecorder::class)->explicit($fixture, 'update', fn () => null, fn () => ['unapproved' => 'value']);
+    }
+
+    public function test_explicit_relationship_snapshot_rejects_sensitive_and_duplicate_fields(): void
+    {
+        $fixture = AuditFixture::create(['id' => 'sensitive-relationship', 'name' => 'Before', 'status' => 'active']);
+        $recorder = app(AdminOperationRecorder::class);
+
+        foreach ([['password' => 'private'], ['name' => 'duplicate']] as $relationshipValues) {
+            config(['admin-operation-logs.models.'.AuditFixture::class.'.relationship_fields' => array_keys($relationshipValues)]);
+
+            try {
+                $recorder->explicit($fixture, 'update', fn () => null, fn () => $relationshipValues);
+                $this->fail('Sensitive and duplicate relationship fields must be rejected.');
+            } catch (LogicException $exception) {
+                $this->assertStringContainsString('sensitive or duplicate', $exception->getMessage());
+            }
+        }
+    }
+
+    public function test_explicit_relationship_snapshot_rejects_nested_and_object_values(): void
+    {
+        $fixture = AuditFixture::create(['id' => 'unsafe-values', 'name' => 'Before', 'status' => 'active']);
+        $recorder = app(AdminOperationRecorder::class);
+        config(['admin-operation-logs.models.'.AuditFixture::class.'.relationship_fields' => ['links']]);
+
+        foreach ([['links' => ['one' => ['two' => ['three' => ['four' => ['five' => 'deep']]]]]], ['links' => new \stdClass]] as $values) {
+            try {
+                $recorder->explicit($fixture, 'update', fn () => null, fn () => $values);
+                $this->fail('Unsafe relationship snapshot values must be rejected.');
+            } catch (LogicException $exception) {
+                $this->assertStringContainsString('Admin audit snapshots', $exception->getMessage());
+            }
+        }
+    }
+
+    public function test_observer_ignores_completion_events_without_a_matching_pending_write(): void
+    {
+        $fixture = AuditFixture::create(['id' => 'orphan-completion', 'name' => 'Name', 'status' => 'active']);
+        $context = app(AdminOperationContext::class);
+        $observer = app(AdminOperationObserver::class);
+
+        $context->within(auth()->user(), 'fixture.orphan', DB::connection()->getName(), function () use ($observer, $fixture): void {
+            $observer->handle('eloquent.updated: '.AuditFixture::class, [$fixture]);
+        });
+
+        $this->assertDatabaseCount('admin_operation_logs', 0);
     }
 
     public function test_canceled_restore_does_not_suppress_later_save_in_same_context(): void
