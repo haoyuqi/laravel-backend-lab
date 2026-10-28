@@ -59,7 +59,7 @@ completion:
 php -d zend.assertions=-1 -d pcre.jit=0 ./vendor/bin/pint --test
 env TEST_DB_CONNECTION=sqlite TEST_DB_DATABASE=:memory: php -d pcov.enabled=1 -d pcov.directory=app ./vendor/bin/phpunit --coverage-text
 ./vendor/bin/phpunit
-python3 -m unittest discover -s .github/scripts -p 'test_ci_summary.py'
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .github/scripts -p 'test_*.py'
 npm run build
 ```
 
