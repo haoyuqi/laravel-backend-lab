@@ -1,6 +1,6 @@
 import { test as setup, expect } from '@playwright/test';
 
-const authFile = 'playwright/.auth/admin.json';
+const authFile = 'tests/e2e/.auth/admin.json';
 
 setup('authenticate as admin', async ({ page }) => {
   // Navigate to Filament login page

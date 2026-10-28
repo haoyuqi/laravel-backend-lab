@@ -267,7 +267,7 @@ php artisan queue:work --queue=push-time
 ## 测试
 
 `master` 是唯一的长期代码分支。基于它创建临时分支，直接向 `master` 提交拉取请求；
-合并后 GitHub 会自动删除临时分支。完整流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+合并后 GitHub 会自动删除临时分支。
 
 默认测试套件使用独立的 `testing` 连接和内存 SQLite 数据库，不会使用主要开发数据库。
 
@@ -310,11 +310,6 @@ npm run test:e2e
 生产环境启用定时功能时，需要每分钟运行 Laravel 调度器。使用异步队列连接时，
 需要通过进程管理器持续运行队列 Worker；Horizon 仅适用于 Redis 队列。调度器负责
 备份、清理、访客统计汇总、Telescope 数据裁剪、GeoIP 维护和 Bing 壁纸下载。
-
-## 参与贡献
-
-提交 Issue 或 Pull Request 前，请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。其中定义了
-本仓库使用的分支命名、Commit Message、测试和目标分支规范。
 
 ## 许可证
 

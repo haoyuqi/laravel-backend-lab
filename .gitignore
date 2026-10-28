@@ -31,6 +31,5 @@ docs/
 .omo/
 
 # Playwright artifacts
-test-results/
-playwright-report/
-playwright/.auth/
+tests/e2e/.auth/
+tests/e2e/.results/

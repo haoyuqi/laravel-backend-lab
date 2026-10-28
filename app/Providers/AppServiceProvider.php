@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Libraries\BingWallpaper\BingWallpaper;
 use App\Libraries\BingWallpaper\Contracts\BingWallpaperInterface;
-use App\Libraries\GetCityByIp\FreeAPI;
 use App\Libraries\GetCityByIp\GeoIP;
 use App\Libraries\GetCityByIp\GetCityByIpAbstract;
 use App\Listeners\RecordAdminAuthentication;
@@ -32,9 +31,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        /*if ($this->app->isLocal()) {
-            $this->app->register(TelescopeServiceProvider::class);
-        }*/
         $this->app->register(TelescopeServiceProvider::class);
         $this->app->singleton(RedisFailureLogger::class);
         $this->app->scoped(AdminOperationContext::class);
@@ -52,7 +48,6 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(GetCityByIpAbstract::class, function ($app) {
             return new GeoIP(new Client);
-            //            return new FreeAPI(new Client());
         });
 
         $this->app->bind(
@@ -66,6 +61,5 @@ class AppServiceProvider extends ServiceProvider
         });
         Event::listen(Login::class, [RecordAdminAuthentication::class, 'captureLogin']);
         Event::listen(Logout::class, [RecordAdminAuthentication::class, 'recordLogout']);
-
     }
 }

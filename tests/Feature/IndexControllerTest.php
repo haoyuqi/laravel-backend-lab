@@ -26,14 +26,16 @@ class IndexControllerTest extends TestCase
             ->assertViewHas('info', 'No Message');
     }
 
-    public function time()
+    public function test_time(): void
     {
+        $this->travelTo(now()->startOfSecond());
+
         $response = $this->get('/time');
 
         $response->assertSuccessful()
             ->assertViewIs('index.time')
             ->assertSeeText('Time')
-            ->assertViewHas('info', now()->toDateTimeString());
+            ->assertViewHas('init_data', [now()->toDateTimeString()]);
     }
 
     public function test_test()

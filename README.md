@@ -307,7 +307,7 @@ assets afterwards with `npm run build`.
 
 `master` is the only long-lived code branch. Open pull requests from short-lived
 branches directly against `master`; GitHub automatically deletes those branches
-after merging. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
+after merging.
 
 The default test suite uses a dedicated `testing` connection backed by an
 in-memory SQLite database. It does not use the primary development database.
@@ -371,12 +371,6 @@ scheduled features are enabled. Keep queue workers under a process supervisor
 when using an asynchronous queue connection. Horizon is appropriate only for a
 Redis-backed queue. The scheduler performs backups, cleanup, visit aggregation,
 Telescope pruning, GeoIP maintenance, and Bing wallpaper downloads.
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull
-request. It defines the branch naming, commit message, testing, and target branch
-conventions used by this repository.
 
 ## License
 

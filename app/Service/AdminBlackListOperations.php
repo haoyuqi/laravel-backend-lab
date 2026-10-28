@@ -3,10 +3,7 @@
 namespace App\Service;
 
 use App\Models\BlackList;
-use App\Models\User;
 use App\Support\IpAddress;
-use Filament\Facades\Filament;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
@@ -17,7 +14,6 @@ class AdminBlackListOperations
 {
     public function create(array $data): BlackList
     {
-        $actor = $this->actor();
         $ip = $this->validatedIp($data);
 
         return app(AdminOperationRecorder::class)->run((new BlackList)->getConnection(), 'black_list.create', function () use ($ip): BlackList {
@@ -32,7 +28,6 @@ class AdminBlackListOperations
 
     public function update(BlackList $record, array $data): BlackList
     {
-        $actor = $this->actor();
         $ip = $this->validatedIp($data);
 
         return app(AdminOperationRecorder::class)->run($record->getConnection(), 'black_list.update', function () use ($record, $ip): BlackList {
@@ -54,8 +49,6 @@ class AdminBlackListOperations
 
     public function delete(BlackList $record): bool
     {
-        $actor = $this->actor();
-
         return app(AdminOperationRecorder::class)->run($record->getConnection(), 'black_list.delete', function () use ($record): bool {
             $current = $this->locked($record);
             if ($current->trashed()) {
@@ -71,7 +64,6 @@ class AdminBlackListOperations
 
     public function addIp(string $ip): BlackList
     {
-        $actor = $this->actor();
         $ip = $this->validatedIp(['ip' => $ip]);
 
         return app(AdminOperationRecorder::class)->run((new BlackList)->getConnection(), 'black_list.add_ip', function () use ($ip): BlackList {
@@ -88,17 +80,6 @@ class AdminBlackListOperations
 
             return $record;
         });
-    }
-
-    private function actor(): User
-    {
-        $panel = Filament::getPanel('admin');
-        $actor = $panel->auth()->user();
-        if (! $actor instanceof User || ! $actor->canAccessPanel($panel)) {
-            throw new AuthorizationException('Admin access is required.');
-        }
-
-        return $actor;
     }
 
     private function validatedIp(array $data): string
