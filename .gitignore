@@ -21,11 +21,9 @@ yarn-error.log
 /public/js/
 /storage/bing-wallpaper/
 /storage/backup/
-AGENTS.md
 
 # Local planning documents
 plan/
-docs/
 .sisyphus/
 .agent-plans/
 .omo/
