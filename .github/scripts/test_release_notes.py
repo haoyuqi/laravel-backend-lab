@@ -1,0 +1,124 @@
+import importlib.util
+import io
+import json
+import unittest
+import urllib.error
+from unittest.mock import patch
+from pathlib import Path
+
+SPEC = importlib.util.spec_from_file_location('release_notes', Path(__file__).with_name('release-notes.py'))
+notes = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(notes)
+
+
+class ReleaseNotesTest(unittest.TestCase):
+    def test_release_tags_require_v_and_three_canonical_numbers(self):
+        self.assertEqual((3, 0, 3), notes.version('v3.0.3'))
+        self.assertEqual((3, 0, 2), notes.version('3.0.2', legacy=True))
+        for value in ['3.0.3', 'v03.0.3', 'v1.2', 'v1.2.3-rc.1', '-x', 'v1.2.3\n']:
+            with self.assertRaises(ValueError):
+                notes.version(value)
+
+    def test_previous_version_preserves_legacy_name_and_ignores_newer_tags(self):
+        tags = ['v1.0.0', '3.0.2', 'v3.0.4', 'v3.0.3', 'random', 'v3.0.2-rc.1']
+        self.assertEqual('3.0.2', notes.previous_tag('v3.0.3', tags))
+        self.assertIsNone(notes.previous_tag('v0.1.0', tags))
+        self.assertEqual('v3.0.2', notes.previous_tag('v3.0.3', ['3.0.2', 'v3.0.2']))
+
+    def test_endpoint_and_request_use_high(self):
+        response = io.BytesIO(json.dumps({'choices': [{'message': {'content': ' Notes '}}]}).encode())
+        with patch.object(notes.HTTP, 'open', return_value=response) as request:
+            self.assertEqual('Notes', notes.complete('https://example.test/v1/', 'secret', 'model', 'system', 'input'))
+        outgoing = request.call_args.args[0]
+        self.assertEqual('https://example.test/v1/chat/completions', outgoing.full_url)
+        payload = json.loads(outgoing.data)
+        self.assertEqual('high', payload['reasoning_effort'])
+        self.assertFalse(payload['stream'])
+
+    def test_insecure_or_credentialed_urls_are_rejected(self):
+        for base in ['http://example.test/v1', 'https://user:pass@example.test/v1', 'https://example.test/v1?token=a']:
+            with self.assertRaises(ValueError):
+                notes.complete(base, 'key', 'model', '', '')
+
+    def test_both_generation_calls_request_high_and_join_languages(self):
+        with patch.object(notes, 'complete', side_effect=['English', '中文']) as call:
+            result = notes.generate(['fix: repair login'], ('https://example.test/v1', 'key', 'model'))
+        self.assertEqual('English\n\n<!-- lang:zh -->\n\n中文\n', result)
+        self.assertEqual(2, call.call_count)
+        self.assertIn('English', call.call_args.args[-1])
+
+    def test_generation_failure_falls_back_without_printing_exception(self):
+        with patch.object(notes, 'complete', side_effect=ValueError('secret endpoint')), patch('sys.stderr', new_callable=io.StringIO) as error:
+            result = notes.generate(['fix: repair login'], ('url', 'key', 'model'))
+        self.assertIn('- fix: repair login', result)
+        self.assertNotIn('secret endpoint', error.getvalue())
+
+    def test_translation_failure_keeps_english(self):
+        with patch.object(notes, 'complete', side_effect=['English', TimeoutError()]), patch('sys.stderr', new_callable=io.StringIO):
+            self.assertEqual('English\n', notes.generate(['fix: a'], ('url', 'key', 'model')))
+
+    def test_missing_configuration_falls_back(self):
+        with patch.object(notes, 'complete') as call, patch('sys.stderr', new_callable=io.StringIO):
+            self.assertIn('- fix: a', notes.generate(['fix: a'], ('', '', '')))
+        call.assert_not_called()
+
+    def test_empty_or_malformed_responses_are_errors(self):
+        for payload in [{}, {'choices': [{'message': {'content': ' '}}]}, {'choices': [{'message': {'content': ['bad']}}]}]:
+            with patch.object(notes.HTTP, 'open', return_value=io.BytesIO(json.dumps(payload).encode())):
+                with self.assertRaises(ValueError):
+                    notes.complete('https://example.test/v1', 'key', 'model', '', '')
+
+    def test_temporary_rate_limit_retries_with_bound(self):
+        def limited():
+            return urllib.error.HTTPError('url', 429, 'limited', {}, io.BytesIO(b'{"error":{"code":"rate_limit"}}'))
+        with patch.object(notes.HTTP, 'open', side_effect=[limited(), limited(), limited()]) as call, patch.object(notes.time, 'sleep') as sleep:
+            with self.assertRaises(ValueError):
+                notes.complete('https://example.test/v1', 'key', 'model', '', '')
+        self.assertEqual(3, call.call_count)
+        self.assertEqual(2, sleep.call_count)
+
+    def test_daily_quota_and_timeout_are_not_retried(self):
+        quota = urllib.error.HTTPError('url', 429, 'limited', {}, io.BytesIO(b'{"error":{"message":"Daily token quota exhausted"}}'))
+        for error in [quota, TimeoutError(), urllib.error.HTTPError('url', 401, 'unauthorized', {}, io.BytesIO(b''))]:
+            with patch.object(notes.HTTP, 'open', side_effect=error) as call:
+                with self.assertRaises((ValueError, TimeoutError)):
+                    notes.complete('https://example.test/v1', 'key', 'model', '', '')
+            self.assertEqual(1, call.call_count)
+
+    def test_redirects_are_not_followed_with_credentials(self):
+        with self.assertRaises(urllib.error.HTTPError):
+            notes.NoRedirect().redirect_request(notes.urllib.request.Request('https://example.test'), None, 302, 'found', {}, 'https://other.test')
+
+    def test_output_cannot_echo_configuration_or_inject_language_separator(self):
+        for output in ['secret-key', 'https://example.test/v1', 'model-id', '<!-- lang:zh -->']:
+            with patch.object(notes, 'complete', return_value=output), patch('sys.stderr', new_callable=io.StringIO):
+                result = notes.generate(['fix: a'], ('https://example.test/v1', 'secret-key', 'model-id'))
+            self.assertIn('- fix: a', result)
+
+    def test_input_is_bounded(self):
+        with patch.object(notes, 'complete', return_value='Done') as call:
+            notes.generate(['a' * 5000] * 1000, ('url', 'key', 'model'))
+        self.assertLess(len(call.call_args_list[0].args[-1].encode()), 100000)
+
+
+
+class TagValidationTest(unittest.TestCase):
+    def test_tag_must_resolve_to_commit_on_master(self):
+        with patch.object(notes, 'git', return_value='a' * 40) as git, patch.object(notes.subprocess, 'run') as run:
+            self.assertEqual('a' * 40, notes.validate('v1.2.3'))
+        git.assert_called_once_with('rev-parse', '--verify', 'refs/tags/v1.2.3^{commit}')
+        run.assert_called_once_with(['git', 'merge-base', '--is-ancestor', 'a' * 40, 'refs/remotes/origin/master'], check=True)
+
+    def test_non_master_history_is_rejected(self):
+        with patch.object(notes, 'git', return_value='a' * 40), patch.object(notes.subprocess, 'run', side_effect=notes.subprocess.CalledProcessError(1, 'git')):
+            with self.assertRaises(notes.subprocess.CalledProcessError):
+                notes.validate('v1.2.3')
+
+    def test_changed_tag_is_rejected(self):
+        with patch.object(notes, 'git', return_value='a' * 40), patch.object(notes.subprocess, 'run'), patch.dict(notes.os.environ, {'RELEASE_EXPECTED_SHA': 'b' * 40}):
+            with self.assertRaises(ValueError):
+                notes.validate('v1.2.3')
+
+
+if __name__ == '__main__':
+    unittest.main()
