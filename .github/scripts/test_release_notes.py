@@ -1,6 +1,7 @@
 import importlib.util
 import io
 import json
+import socket
 import unittest
 import urllib.error
 from unittest.mock import patch
@@ -31,6 +32,7 @@ class ReleaseNotesTest(unittest.TestCase):
             self.assertEqual('Notes', notes.complete('https://example.test/v1/', 'secret', 'model', 'system', 'input'))
         outgoing = request.call_args.args[0]
         self.assertEqual('https://example.test/v1/chat/completions', outgoing.full_url)
+        self.assertEqual('release-notes-generator/1.0', outgoing.get_header('User-agent'))
         payload = json.loads(outgoing.data)
         self.assertEqual('high', payload['reasoning_effort'])
         self.assertFalse(payload['stream'])
@@ -52,6 +54,7 @@ class ReleaseNotesTest(unittest.TestCase):
             result = notes.generate(['fix: repair login'], ('url', 'key', 'model'))
         self.assertIn('- fix: repair login', result)
         self.assertNotIn('secret endpoint', error.getvalue())
+        self.assertIn('Generation failed', error.getvalue())
 
     def test_translation_failure_keeps_english(self):
         with patch.object(notes, 'complete', side_effect=['English', TimeoutError()]), patch('sys.stderr', new_callable=io.StringIO):
@@ -84,6 +87,29 @@ class ReleaseNotesTest(unittest.TestCase):
                 with self.assertRaises((ValueError, TimeoutError)):
                     notes.complete('https://example.test/v1', 'key', 'model', '', '')
             self.assertEqual(1, call.call_count)
+
+    def test_http_failure_reports_only_the_safe_status(self):
+        unauthorized = urllib.error.HTTPError(
+            'https://private.example/v1/chat/completions',
+            401,
+            'unauthorized',
+            {},
+            io.BytesIO(b'{"error":{"message":"bad secret-key for private.example"}}'),
+        )
+        with patch.object(notes.HTTP, 'open', side_effect=unauthorized):
+            with self.assertRaises(notes.GenerationError) as raised:
+                notes.complete('https://private.example/v1', 'secret-key', 'model', '', '')
+        self.assertEqual('http_status_401', raised.exception.reason)
+        self.assertNotIn('private.example', str(raised.exception))
+        self.assertNotIn('secret-key', str(raised.exception))
+
+    def test_network_failure_reports_a_generic_safe_category(self):
+        failure = notes.urllib.error.URLError(socket.gaierror('private.example'))
+        with patch.object(notes.HTTP, 'open', side_effect=failure):
+            with self.assertRaises(notes.GenerationError) as raised:
+                notes.complete('https://private.example/v1', 'secret-key', 'model', '', '')
+        self.assertEqual('network_dns', raised.exception.reason)
+        self.assertNotIn('private.example', str(raised.exception))
 
     def test_redirects_are_not_followed_with_credentials(self):
         with self.assertRaises(urllib.error.HTTPError):

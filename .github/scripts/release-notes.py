@@ -5,6 +5,8 @@ import json
 import os
 from pathlib import Path
 import re
+import socket
+import ssl
 import subprocess
 import sys
 import time
@@ -22,6 +24,12 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 HTTP = urllib.request.build_opener(NoRedirect())
+
+
+class GenerationError(ValueError):
+    def __init__(self, reason):
+        super().__init__(reason)
+        self.reason = reason
 
 
 def version(tag, legacy=False):
@@ -62,16 +70,20 @@ def validate(tag):
 def complete(base_url, token, model, system, user):
     parsed = urllib.parse.urlsplit(base_url)
     if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
-        raise ValueError('Invalid service configuration')
+        raise GenerationError('invalid_configuration')
     payload = json.dumps({
         'model': model,
         'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}],
         'reasoning_effort': 'high', 'max_tokens': 4096, 'stream': False,
     }).encode()
     if len(payload) > 1_000_000:
-        raise ValueError('Request exceeds input budget')
+        raise GenerationError('request_too_large')
     request = urllib.request.Request(base_url.rstrip('/') + '/chat/completions', data=payload,
-                                     headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
+                                     headers={
+                                         'Authorization': 'Bearer ' + token,
+                                         'Content-Type': 'application/json',
+                                         'User-Agent': 'release-notes-generator/1.0',
+                                     })
     for attempt in range(3):
         try:
             with HTTP.open(request, timeout=90) as response:
@@ -81,16 +93,31 @@ def complete(base_url, token, model, system, user):
             detail = error.read(8192).lower()
             exhausted = any(word in detail for word in (b'daily', b'quota', b'budget', b'insufficient', b'exhaust', b'credit'))
             if error.code != 429 or exhausted or attempt == 2:
-                raise ValueError('Generation request failed') from None
+                raise GenerationError(f'http_status_{error.code}') from None
             time.sleep(2 ** (attempt + 1))
+        except urllib.error.URLError as error:
+            reason = error.reason
+            if isinstance(reason, (TimeoutError, socket.timeout)):
+                category = 'network_timeout'
+            elif isinstance(reason, socket.gaierror):
+                category = 'network_dns'
+            elif isinstance(reason, ssl.SSLError):
+                category = 'network_tls'
+            elif isinstance(reason, ConnectionError):
+                category = 'network_connection'
+            else:
+                category = 'network_error'
+            raise GenerationError(category) from None
+        except TimeoutError:
+            raise GenerationError('network_timeout') from None
     if len(body) > MAX_RESPONSE:
-        raise ValueError('Response exceeds output budget')
+        raise GenerationError('response_too_large')
     try:
         content = json.loads(body)['choices'][0]['message']['content']
     except (ValueError, KeyError, IndexError, TypeError):
-        raise ValueError('Invalid generation response') from None
+        raise GenerationError('invalid_response') from None
     if not isinstance(content, str) or not content.strip():
-        raise ValueError('Empty generation response')
+        raise GenerationError('empty_response')
     return content.strip()
 
 
@@ -100,7 +127,7 @@ def warning(message):
 
 def safe_output(text, configuration):
     if '<!-- lang:zh -->' in text or any(value and value in text for value in configuration):
-        raise ValueError('Unexpected generation output')
+        raise GenerationError('unsafe_output')
     return text
 
 
@@ -120,8 +147,11 @@ def generate(subjects, configuration):
     )
     try:
         english = safe_output(complete(*configuration, system, source), configuration)
+    except GenerationError as error:
+        warning(f'Generation failed ({error.reason}); using commit subjects.')
+        return fallback
     except (ValueError, OSError):
-        warning('Generation failed; using commit subjects.')
+        warning('Generation failed (unexpected_error); using commit subjects.')
         return fallback
     try:
         chinese = safe_output(complete(
@@ -131,8 +161,11 @@ def generate(subjects, configuration):
             'Do not add a language separator or provider information.',
             english,
         ), configuration)
+    except GenerationError as error:
+        warning(f'Translation failed ({error.reason}); retaining English notes.')
+        return english + '\n'
     except (ValueError, OSError):
-        warning('Translation failed; retaining English notes.')
+        warning('Translation failed (unexpected_error); retaining English notes.')
         return english + '\n'
     return english + '\n\n<!-- lang:zh -->\n\n' + chinese + '\n'
 
