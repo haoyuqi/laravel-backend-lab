@@ -1,19 +1,9 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+@extends('layout.index')
 
-        <meta name="csrf-token" content="{{ csrf_token() }}">
+@section('title', 'Laravel example')
 
-        <title>laravel example</title>
-
-        @vite(['resources/sass/app.scss', 'resources/js/app.js'])
-
-    </head>
-    <body>
-        <div id="app">
-            <show-info-component info="{{ $info }}"></show-info-component>
-        </div>
-    </body>
-</html>
+@section('content')
+    <div id="app">
+        <show-info-component info="{{ $info }}"></show-info-component>
+    </div>
+@endsection

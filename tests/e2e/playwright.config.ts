@@ -1,13 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
+
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 function getEnvValue(key: string, fallback: string = ''): string {
   if (process.env[key] !== undefined && process.env[key] !== '') {
     return process.env[key]!;
   }
   try {
-    const envPath = path.resolve('.env');
+    const envPath = path.resolve(rootDir, '.env');
     if (fs.existsSync(envPath)) {
       const content = fs.readFileSync(envPath, 'utf-8');
       const match = content.match(new RegExp(`^${key}=(.*)$`, 'm'));
@@ -30,8 +33,9 @@ const dbPassword = getEnvValue('TEST_DB_PASSWORD', getEnvValue('DB_PASSWORD', 'p
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: '.',
   testIgnore: 'reverb/**',
+  outputDir: './.results/test-results',
   timeout: 30 * 1000,
   expect: {
     timeout: 10 * 1000,
@@ -41,7 +45,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: [
-    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['html', { outputFolder: './.results/playwright-report', open: 'never' }],
     ['list'],
   ],
   use: {
@@ -60,7 +64,7 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/admin.json',
+        storageState: 'tests/e2e/.auth/admin.json',
       },
       dependencies: ['setup'],
     },
@@ -68,7 +72,7 @@ export default defineConfig({
       name: 'firefox',
       use: {
         ...devices['Desktop Firefox'],
-        storageState: 'playwright/.auth/admin.json',
+        storageState: 'tests/e2e/.auth/admin.json',
       },
       dependencies: ['setup'],
     },
@@ -76,7 +80,7 @@ export default defineConfig({
       name: 'webkit',
       use: {
         ...devices['Desktop Safari'],
-        storageState: 'playwright/.auth/admin.json',
+        storageState: 'tests/e2e/.auth/admin.json',
       },
       dependencies: ['setup'],
     },
@@ -84,7 +88,7 @@ export default defineConfig({
       name: 'Mobile Chrome',
       use: {
         ...devices['Pixel 7'],
-        storageState: 'playwright/.auth/admin.json',
+        storageState: 'tests/e2e/.auth/admin.json',
       },
       dependencies: ['setup'],
     },
@@ -92,7 +96,7 @@ export default defineConfig({
       name: 'Mobile Safari',
       use: {
         ...devices['iPhone 15'],
-        storageState: 'playwright/.auth/admin.json',
+        storageState: 'tests/e2e/.auth/admin.json',
       },
       dependencies: ['setup'],
     },
@@ -100,6 +104,7 @@ export default defineConfig({
 
   webServer: {
     command: 'php artisan serve --host 127.0.0.1 --port 8000',
+    cwd: rootDir,
     url: 'http://127.0.0.1:8000/up',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

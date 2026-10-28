@@ -291,17 +291,18 @@ class StatsOverviewWidgetTest extends TestCase
             ->assertSee('Debug');
     }
 
-    public function test_health_widget_identifies_mysql_and_postgres_connections(): void
+    public function test_health_widget_identifies_mysql_postgres_and_sqlite_connections(): void
     {
         $connection = \Mockery::mock();
-        $connection->shouldReceive('getDriverName')->twice()->andReturn('mysql', 'pgsql');
-        DB::shouldReceive('connection')->twice()->andReturn($connection);
-        DB::shouldReceive('select')->twice()->with('SELECT 1')->andReturn([]);
+        $connection->shouldReceive('getDriverName')->times(3)->andReturn('mysql', 'pgsql', 'sqlite');
+        DB::shouldReceive('connection')->times(3)->andReturn($connection);
+        DB::shouldReceive('select')->times(3)->with('SELECT 1')->andReturn([]);
         $method = new \ReflectionMethod(HealthStatusWidget::class, 'checkDatabaseHealth');
         $widget = new HealthStatusWidget;
 
         $this->assertSame('MySQL', $method->invoke($widget)['name']);
         $this->assertSame('PostgreSQL', $method->invoke($widget)['name']);
+        $this->assertSame('SQLite', $method->invoke($widget)['name']);
     }
 
     public function test_health_widget_names_mysql_and_sqlite_when_connections_fail(): void

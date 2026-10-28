@@ -4,9 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\VisitorLogResource\Pages\ListVisitorLogs;
 use App\Models\VisitorLog;
-use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -27,19 +25,6 @@ class VisitorLogResource extends Resource
     protected static ?string $pluralModelLabel = '访客日志';
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema
-            ->components([
-                TextInput::make('visitor_id')
-                    ->required()
-                    ->numeric(),
-                TextInput::make('url')
-                    ->required()
-                    ->maxLength(255),
-            ]);
-    }
 
     public static function table(Table $table): Table
     {

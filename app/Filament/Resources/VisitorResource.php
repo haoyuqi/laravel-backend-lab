@@ -8,10 +8,8 @@ use App\Service\AdminBlackListOperations;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -47,17 +45,6 @@ class VisitorResource extends Resource
                 'logs as today_logs_count' => fn (Builder $query) => $query->where('created_at', '>=', today()->startOfDay()),
             ])
             ->with(['blackList']);
-    }
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema
-            ->components([
-                TextInput::make('ip')
-                    ->required(),
-                TextInput::make('city')
-                    ->maxLength(50),
-            ]);
     }
 
     public static function table(Table $table): Table

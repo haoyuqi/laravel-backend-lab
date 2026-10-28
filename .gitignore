@@ -21,16 +21,13 @@ yarn-error.log
 /public/js/
 /storage/bing-wallpaper/
 /storage/backup/
-AGENTS.md
 
 # Local planning documents
 plan/
-docs/
 .sisyphus/
 .agent-plans/
 .omo/
 
 # Playwright artifacts
-test-results/
-playwright-report/
-playwright/.auth/
+tests/e2e/.auth/
+tests/e2e/.results/

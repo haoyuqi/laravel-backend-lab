@@ -7,7 +7,6 @@ use App\Filament\Resources\VisitorLogResource\Pages\ListVisitorLogs;
 use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorLog;
-use Filament\Schemas\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -108,20 +107,5 @@ class VisitorLogResourceTest extends TestCase
         $this->assertFalse(VisitorLogResource::canEdit(new VisitorLog));
         $this->assertFalse(VisitorLogResource::canDelete(new VisitorLog));
         $this->assertFalse(VisitorLogResource::canDeleteAny());
-    }
-
-    public function test_visitor_log_form_requires_a_numeric_visitor_id_and_bounded_url(): void
-    {
-        $schema = VisitorLogResource::form(Schema::make());
-        $components = $schema->getComponents();
-
-        $this->assertSame(['visitor_id', 'url'], array_map(
-            static fn ($component): string => $component->getName(),
-            $components
-        ));
-        $this->assertTrue($components[0]->isRequired());
-        $this->assertTrue($components[0]->isNumeric());
-        $this->assertTrue($components[1]->isRequired());
-        $this->assertSame(255, $components[1]->getMaxLength());
     }
 }

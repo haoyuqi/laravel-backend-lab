@@ -5,9 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BlackListLogResource\Pages\ListBlackListLogs;
 use App\Models\BlackListLog;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -35,15 +33,6 @@ class BlackListLogResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['blackList']);
-    }
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema
-            ->components([
-                TextInput::make('url')
-                    ->required(),
-            ]);
     }
 
     public static function table(Table $table): Table

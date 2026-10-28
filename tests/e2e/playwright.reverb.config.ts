@@ -1,5 +1,9 @@
 import { randomBytes } from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
+
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 // Config also loads in workers; reuse the parent process's ephemeral secret.
 process.env.REVERB_E2E_SECRET ??= randomBytes(32).toString('hex');
@@ -36,7 +40,8 @@ const env = {
 Object.assign(process.env, env);
 
 export default defineConfig({
-  testDir: './e2e/reverb',
+  testDir: './reverb',
+  outputDir: './.results/reverb-results',
   workers: 1,
   timeout: 30_000,
   use: { baseURL: env.APP_URL, trace: 'retain-on-failure' },
@@ -44,12 +49,14 @@ export default defineConfig({
   webServer: [
     {
       command: 'php artisan reverb:start',
+      cwd: rootDir,
       port: Number(reverbPort),
       env,
       reuseExistingServer: false,
     },
     {
       command: 'npm run build && php artisan serve --host=0.0.0.0 --port=8000',
+      cwd: rootDir,
       url: `${env.APP_URL}/up`,
       env,
       timeout: 120_000,
