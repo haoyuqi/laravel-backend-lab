@@ -44,9 +44,10 @@ HTTP = urllib.request.build_opener(NoRedirect())
 
 
 class GenerationError(ValueError):
-    def __init__(self, reason):
+    def __init__(self, reason, retryable=False):
         super().__init__(reason)
         self.reason = reason
+        self.retryable = retryable
 
 
 def version(tag, legacy=False):
@@ -209,6 +210,20 @@ def validate(tag):
 
 
 def complete(base_url, token, model, system, user):
+    for attempt in range(3):
+        try:
+            return complete_once(base_url, token, model, system, user)
+        except GenerationError as error:
+            transient = error.retryable or error.reason in {
+                'network_timeout', 'network_dns', 'network_connection',
+                'network_error', 'incomplete_response',
+            }
+            if not transient or attempt == 2:
+                raise
+            time.sleep(2 ** (attempt + 1))
+
+
+def complete_once(base_url, token, model, system, user):
     parsed = urllib.parse.urlsplit(base_url)
     if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise GenerationError('invalid_configuration')
@@ -225,41 +240,38 @@ def complete(base_url, token, model, system, user):
                                          'Content-Type': 'application/json',
                                          'User-Agent': 'release-notes-generator/1.0',
                                      })
-    for attempt in range(3):
+    try:
+        with HTTP.open(request, timeout=90) as response:
+            body = response.read(MAX_RESPONSE + 1)
+    except urllib.error.HTTPError as error:
         try:
-            with HTTP.open(request, timeout=90) as response:
-                body = response.read(MAX_RESPONSE + 1)
-            break
-        except urllib.error.HTTPError as error:
-            try:
-                detail = error.read(8192).lower()
-            except (http.client.HTTPException, ConnectionError):
-                detail = b''
-            exhausted = any(word in detail for word in (b'daily', b'quota', b'budget', b'insufficient', b'exhaust', b'credit'))
-            if error.code != 429 or exhausted or attempt == 2:
-                raise GenerationError(f'http_status_{error.code}') from None
-            time.sleep(2 ** (attempt + 1))
-        except urllib.error.URLError as error:
-            reason = error.reason
-            if isinstance(reason, (TimeoutError, socket.timeout)):
-                category = 'network_timeout'
-            elif isinstance(reason, socket.gaierror):
-                category = 'network_dns'
-            elif isinstance(reason, ssl.SSLError):
-                category = 'network_tls'
-            elif isinstance(reason, ConnectionError):
-                category = 'network_connection'
-            else:
-                category = 'network_error'
-            raise GenerationError(category) from None
-        except (http.client.IncompleteRead, http.client.RemoteDisconnected):
-            raise GenerationError('incomplete_response') from None
-        except ConnectionError:
-            raise GenerationError('network_connection') from None
-        except ssl.SSLError:
-            raise GenerationError('network_tls') from None
-        except TimeoutError:
-            raise GenerationError('network_timeout') from None
+            detail = error.read(8192).lower()
+        except (http.client.HTTPException, ConnectionError):
+            detail = b''
+        exhausted = any(word in detail for word in (b'daily', b'quota', b'budget', b'insufficient', b'exhaust', b'credit'))
+        retryable = (error.code == 429 and not exhausted) or error.code in (500, 502, 503, 504)
+        raise GenerationError(f'http_status_{error.code}', retryable=retryable) from None
+    except urllib.error.URLError as error:
+        reason = error.reason
+        if isinstance(reason, (TimeoutError, socket.timeout)):
+            category = 'network_timeout'
+        elif isinstance(reason, socket.gaierror):
+            category = 'network_dns'
+        elif isinstance(reason, ssl.SSLError):
+            category = 'network_tls'
+        elif isinstance(reason, ConnectionError):
+            category = 'network_connection'
+        else:
+            category = 'network_error'
+        raise GenerationError(category) from None
+    except (http.client.IncompleteRead, http.client.RemoteDisconnected):
+        raise GenerationError('incomplete_response') from None
+    except ConnectionError:
+        raise GenerationError('network_connection') from None
+    except ssl.SSLError:
+        raise GenerationError('network_tls') from None
+    except TimeoutError:
+        raise GenerationError('network_timeout') from None
     if len(body) > MAX_RESPONSE:
         raise GenerationError('response_too_large')
     try:
@@ -307,16 +319,16 @@ def generate(context, configuration):
         return fallback
     try:
         source = context_source(context)
-    except GenerationError as error:
-        warning(f'Generation failed ({error.reason}); using commit subjects.')
+    except GenerationError:
+        warning('Generation failed; using commit subjects.')
         return fallback
     try:
         english = safe_output(complete(*configuration, ENGLISH_PROMPT, source), configuration)
-    except GenerationError as error:
-        warning(f'Generation failed ({error.reason}); using commit subjects.')
+    except GenerationError:
+        warning('Generation failed; using commit subjects.')
         return fallback
     except (ValueError, OSError):
-        warning('Generation failed (unexpected_error); using commit subjects.')
+        warning('Generation failed; using commit subjects.')
         return fallback
     try:
         chinese = safe_output(complete(
@@ -326,11 +338,11 @@ def generate(context, configuration):
             'Do not add a language separator or provider information.',
             english,
         ), configuration)
-    except GenerationError as error:
-        warning(f'Translation failed ({error.reason}); retaining English notes.')
+    except GenerationError:
+        warning('Translation unavailable; retaining English notes.')
         return english + '\n'
     except (ValueError, OSError):
-        warning('Translation failed (unexpected_error); retaining English notes.')
+        warning('Translation unavailable; retaining English notes.')
         return english + '\n'
     return english + '\n\n<!-- lang:zh -->\n\n' + chinese + '\n'
 

@@ -14,6 +14,38 @@ SPEC.loader.exec_module(notes)
 
 
 class ReleaseNotesTest(unittest.TestCase):
+    def setUp(self):
+        sleeper = patch.object(notes.time, 'sleep')
+        sleeper.start()
+        self.addCleanup(sleeper.stop)
+
+    def test_timeout_recovers_on_third_attempt(self):
+        response = io.BytesIO(json.dumps({'choices': [{'message': {'content': 'Recovered'}}]}).encode())
+        with patch.object(notes.HTTP, 'open', side_effect=[TimeoutError(), TimeoutError(), response]) as call:
+            self.assertEqual('Recovered', notes.complete('https://example.test/v1', 'key', 'model', '', ''))
+        self.assertEqual(3, call.call_count)
+
+    def test_transient_failures_stop_after_three_attempts_without_logs(self):
+        for failure in [TimeoutError('private endpoint'), urllib.error.URLError(socket.gaierror('private endpoint')),
+                        http.client.IncompleteRead(b'private response')]:
+            with self.subTest(failure=type(failure).__name__), patch.object(notes.HTTP, 'open', side_effect=failure) as call, patch('sys.stderr', new_callable=io.StringIO) as log:
+                with self.assertRaises(notes.GenerationError):
+                    notes.complete('https://example.test/v1', 'secret', 'model', '', '')
+                self.assertEqual(3, call.call_count)
+                self.assertEqual('', log.getvalue())
+
+    def test_public_warning_never_prints_error_details(self):
+        with patch.object(notes, 'complete', side_effect=notes.GenerationError('private endpoint secret')), patch('sys.stderr', new_callable=io.StringIO) as log:
+            notes.generate(['fix: example'], ('url', 'key', 'model'))
+        self.assertNotIn('private endpoint secret', log.getvalue())
+
+    def test_server_error_recovers_on_retry(self):
+        failure = urllib.error.HTTPError('url', 503, 'unavailable', {}, io.BytesIO(b'private response'))
+        response = io.BytesIO(json.dumps({'choices': [{'message': {'content': 'Recovered'}}]}).encode())
+        with patch.object(notes.HTTP, 'open', side_effect=[failure, response]) as call:
+            self.assertEqual('Recovered', notes.complete('https://example.test/v1', 'key', 'model', '', ''))
+        self.assertEqual(2, call.call_count)
+
     def test_release_tags_require_v_and_three_canonical_numbers(self):
         self.assertEqual((3, 0, 3), notes.version('v3.0.3'))
         self.assertEqual((3, 0, 2), notes.version('3.0.2', legacy=True))
@@ -93,7 +125,7 @@ class ReleaseNotesTest(unittest.TestCase):
             notes.GenerationError('incomplete_response'),
         ]), patch('sys.stderr', new_callable=io.StringIO) as error:
             self.assertEqual('English\n', notes.generate(['fix: a'], ('url', 'key', 'model')))
-        self.assertIn('Translation failed (incomplete_response)', error.getvalue())
+        self.assertNotIn('incomplete_response', error.getvalue())
 
     def test_missing_configuration_falls_back(self):
         with patch.object(notes, 'complete') as call, patch('sys.stderr', new_callable=io.StringIO):
@@ -115,9 +147,9 @@ class ReleaseNotesTest(unittest.TestCase):
         self.assertEqual(3, call.call_count)
         self.assertEqual(2, sleep.call_count)
 
-    def test_daily_quota_and_timeout_are_not_retried(self):
+    def test_daily_quota_and_authentication_are_not_retried(self):
         quota = urllib.error.HTTPError('url', 429, 'limited', {}, io.BytesIO(b'{"error":{"message":"Daily token quota exhausted"}}'))
-        for error in [quota, TimeoutError(), urllib.error.HTTPError('url', 401, 'unauthorized', {}, io.BytesIO(b''))]:
+        for error in [quota, urllib.error.HTTPError('url', 401, 'unauthorized', {}, io.BytesIO(b''))]:
             with patch.object(notes.HTTP, 'open', side_effect=error) as call:
                 with self.assertRaises((ValueError, TimeoutError)):
                     notes.complete('https://example.test/v1', 'key', 'model', '', '')
@@ -181,7 +213,7 @@ class ReleaseNotesTest(unittest.TestCase):
         with patch.object(notes, 'complete', return_value='Done') as call, patch('sys.stderr', new_callable=io.StringIO) as error:
             result = notes.generate(['a' * 5000] * 1000, ('url', 'key', 'model'))
         self.assertIn('- ' + 'a' * 500, result)
-        self.assertIn('context_too_large', error.getvalue())
+        self.assertNotIn('context_too_large', error.getvalue())
         call.assert_not_called()
 
     def test_only_direct_dependencies_are_selected_from_lockfile(self):
