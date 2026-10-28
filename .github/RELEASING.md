@@ -21,16 +21,19 @@ organization secrets available to it:
 
 The service must support Chat Completions and `reasoning_effort: high`. Both the
 English generation and Simplified Chinese translation explicitly request high
-reasoning effort. Only nonmerge commit subjects are sent, capped at 80,000
-characters. No source files, diffs, environment files, or other secrets are sent.
-Service configuration stays in Secrets and is never printed by the helper.
+reasoning effort. The request contains nonmerge commit subjects and bodies,
+changed paths and line counts, plus selected runtime and dependency versions
+from manifests and workflows. The context is capped at 180,000 bytes. Full source
+files, diffs, environment files, and other secrets are not sent. Service
+configuration stays in Secrets and is never printed by the helper.
 
 The previous release is the highest lower stable version tag reachable from the
 new tag. Both `3.0.2` and `v3.0.2` are recognized; actual historical tag names are
-used for the comparison. Without a prior tag, all reachable commit subjects are
-used for an initial release. The model groups meaningful changes, filters trivial
-maintenance, and returns English Markdown. A second request translates that
-Markdown; the two sections are joined with `<!-- lang:zh -->`.
+used for the comparison. Without a prior tag, all reachable nonmerge commits are
+used for an initial release. The model groups meaningful changes across product
+behavior, security, compatibility, testing, CI and releases, docs, and contributor
+workflow, and returns English Markdown. A second request translates that Markdown;
+the two sections are joined with `<!-- lang:zh -->`.
 
 Missing configuration or generation errors produce a commit-subject fallback.
 Translation errors keep the English notes. These cases produce visible warnings

@@ -1,4 +1,5 @@
 import importlib.util
+import http.client
 import io
 import json
 import socket
@@ -49,6 +50,32 @@ class ReleaseNotesTest(unittest.TestCase):
         self.assertEqual(2, call.call_count)
         self.assertIn('English', call.call_args.args[-1])
 
+    def test_english_prompt_preserves_engineering_changes(self):
+        context = {'commits': [{'subject': 'test: require complete coverage'}]}
+        with patch.object(notes, 'complete', side_effect=['English', '中文']) as call:
+            notes.generate(context, ('https://example.test/v1', 'key', 'model'))
+        prompt = call.call_args_list[0].args[-2]
+        self.assertIn('engineering lab', prompt)
+        self.assertIn('diagnostic-only', prompt)
+        self.assertIn('file-format change', prompt)
+
+    def test_generation_sends_commit_files_and_version_highlights(self):
+        context = {
+            'commits': [{
+                'subject': 'fix(security): require patched runtimes',
+                'body': 'Raise minimum versions.',
+                'changed_paths': ['composer.json'],
+            }],
+            'changed_files': [{'path': 'composer.json', 'additions': 1, 'deletions': 1}],
+            'version_highlights': {'changed_requirements': {'php': {'before': '^8.4', 'after': '~8.4.27'}}},
+        }
+        with patch.object(notes, 'complete', side_effect=['English', '中文']) as call:
+            notes.generate(context, ('https://example.test/v1', 'key', 'model'))
+        source = json.loads(call.call_args_list[0].args[-1])
+        self.assertEqual('Raise minimum versions.', source['commits'][0]['body'])
+        self.assertEqual(['composer.json'], source['commits'][0]['changed_paths'])
+        self.assertEqual('~8.4.27', source['version_highlights']['changed_requirements']['php']['after'])
+
     def test_generation_failure_falls_back_without_printing_exception(self):
         with patch.object(notes, 'complete', side_effect=ValueError('secret endpoint')), patch('sys.stderr', new_callable=io.StringIO) as error:
             result = notes.generate(['fix: repair login'], ('url', 'key', 'model'))
@@ -59,6 +86,14 @@ class ReleaseNotesTest(unittest.TestCase):
     def test_translation_failure_keeps_english(self):
         with patch.object(notes, 'complete', side_effect=['English', TimeoutError()]), patch('sys.stderr', new_callable=io.StringIO):
             self.assertEqual('English\n', notes.generate(['fix: a'], ('url', 'key', 'model')))
+
+    def test_incomplete_translation_keeps_english(self):
+        with patch.object(notes, 'complete', side_effect=[
+            'English',
+            notes.GenerationError('incomplete_response'),
+        ]), patch('sys.stderr', new_callable=io.StringIO) as error:
+            self.assertEqual('English\n', notes.generate(['fix: a'], ('url', 'key', 'model')))
+        self.assertIn('Translation failed (incomplete_response)', error.getvalue())
 
     def test_missing_configuration_falls_back(self):
         with patch.object(notes, 'complete') as call, patch('sys.stderr', new_callable=io.StringIO):
@@ -111,6 +146,27 @@ class ReleaseNotesTest(unittest.TestCase):
         self.assertEqual('network_dns', raised.exception.reason)
         self.assertNotIn('private.example', str(raised.exception))
 
+    def test_incomplete_response_reports_a_safe_category(self):
+        with patch.object(notes.HTTP, 'open', side_effect=http.client.IncompleteRead(b'partial')):
+            with self.assertRaises(notes.GenerationError) as raised:
+                notes.complete('https://example.test/v1', 'secret-key', 'model', '', '')
+        self.assertEqual('incomplete_response', raised.exception.reason)
+        self.assertNotIn('secret-key', str(raised.exception))
+
+    def test_incomplete_http_error_body_does_not_escape(self):
+        class BrokenBody:
+            def read(self, _size):
+                raise http.client.IncompleteRead(b'partial')
+
+            def close(self):
+                pass
+
+        response = urllib.error.HTTPError('url', 401, 'unauthorized', {}, BrokenBody())
+        with patch.object(notes.HTTP, 'open', side_effect=response):
+            with self.assertRaises(notes.GenerationError) as raised:
+                notes.complete('https://example.test/v1', 'secret-key', 'model', '', '')
+        self.assertEqual('http_status_401', raised.exception.reason)
+
     def test_redirects_are_not_followed_with_credentials(self):
         with self.assertRaises(urllib.error.HTTPError):
             notes.NoRedirect().redirect_request(notes.urllib.request.Request('https://example.test'), None, 302, 'found', {}, 'https://other.test')
@@ -121,10 +177,37 @@ class ReleaseNotesTest(unittest.TestCase):
                 result = notes.generate(['fix: a'], ('https://example.test/v1', 'secret-key', 'model-id'))
             self.assertIn('- fix: a', result)
 
-    def test_input_is_bounded(self):
-        with patch.object(notes, 'complete', return_value='Done') as call:
-            notes.generate(['a' * 5000] * 1000, ('url', 'key', 'model'))
-        self.assertLess(len(call.call_args_list[0].args[-1].encode()), 100000)
+    def test_oversized_context_falls_back_before_request(self):
+        with patch.object(notes, 'complete', return_value='Done') as call, patch('sys.stderr', new_callable=io.StringIO) as error:
+            result = notes.generate(['a' * 5000] * 1000, ('url', 'key', 'model'))
+        self.assertIn('- ' + 'a' * 500, result)
+        self.assertIn('context_too_large', error.getvalue())
+        call.assert_not_called()
+
+    def test_only_direct_dependencies_are_selected_from_lockfile(self):
+        manifest = {'require': {'livewire/livewire': '^4.4'}, 'require-dev': {'phpunit/phpunit': '^12'}}
+        lock = {
+            'packages': [
+                {'name': 'livewire/livewire', 'version': 'v4.4.8'},
+                {'name': 'transitive/package', 'version': '1.0.0'},
+            ],
+            'packages-dev': [{'name': 'phpunit/phpunit', 'version': '12.4.1'}],
+        }
+        self.assertEqual(
+            {'livewire/livewire': 'v4.4.8', 'phpunit/phpunit': '12.4.1'},
+            notes.direct_dependency_versions(lock, manifest),
+        )
+
+    def test_workflow_highlights_extract_runtime_and_coverage_values(self):
+        workflow = "node-version: '^24.22.1'\nphp-version: '8.4'\nMIN_LINE_COVERAGE: '100'\n"
+        with patch.object(notes, 'git', return_value=workflow):
+            self.assertEqual(
+                {
+                    'runtime_versions': {'node': ['^24.22.1'], 'php': ['8.4']},
+                    'minimum_line_coverage': ['100'],
+                },
+                notes.workflow_highlights('a' * 40, ['.github/workflows/tests.yml']),
+            )
 
 
 
