@@ -158,9 +158,13 @@ module responsibilities or runtime paths change.
 - Tagging a commit reachable from `master` with a canonical `vX.Y.Z` tag runs
   [.github/workflows/release.yml](../.github/workflows/release.yml): it validates
   tag ancestry, runs the reusable `tests.yml` workflow, generates bilingual
-  release notes from Git metadata via `.github/scripts/release-notes.py` (with
-  safe fallback to commit subjects), and publishes the GitHub release once all
-  checks pass. Manual `workflow_dispatch` runs generate the `release-notes`
+  release notes from Git metadata via `.github/scripts/release-notes.py`, and
+  publishes the GitHub release once all checks pass. Temporary network errors,
+  HTTP 429 rate limits, and HTTP 500/502/503/504 responses get at most three
+  attempts per language, with 2- and 4-second backoff; authentication and
+  exhausted quotas are not retried. Generation failures fall back to commit
+  subjects; translation failures retain English notes. Public logs contain only
+  generic fallback notices, never error details. Manual `workflow_dispatch` runs generate the `release-notes`
   artifact for preview without publishing.
 
 ## Documentation maintenance
