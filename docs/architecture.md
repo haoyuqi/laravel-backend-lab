@@ -158,13 +158,23 @@ module responsibilities or runtime paths change.
 - Tagging a commit reachable from `master` with a canonical `vX.Y.Z` tag runs
   [.github/workflows/release.yml](../.github/workflows/release.yml): it validates
   tag ancestry, runs the reusable `tests.yml` workflow, generates bilingual
-  release notes from Git metadata via `.github/scripts/release-notes.py`, and
-  publishes the GitHub release once all checks pass. Temporary network errors,
-  HTTP 429 rate limits, and HTTP 500/502/503/504 responses get at most three
-  attempts per language, with 2- and 4-second backoff; authentication and
-  exhausted quotas are not retried. Generation failures fall back to commit
-  subjects; translation failures retain English notes. Public logs contain only
-  generic fallback notices, never error details. Manual `workflow_dispatch` runs generate the `release-notes`
+  release notes via `.github/scripts/release-notes.py`, and publishes the GitHub
+  release once all checks pass. Generation starts after CI succeeds. Sources are
+  the complete titles and descriptions of merged PRs associated with commits in
+  the actual tag range, plus full messages of unmatched commits, including merges.
+  PRs are deduplicated; sources are neither compressed nor truncated. One model
+  request produces structured English and Chinese entries. Local checks require
+  valid structure, nonempty bilingual text and coverage of every source ID; they
+  do not establish semantic correctness. The program renders source links and
+  exact added, changed or removed Composer runtime/platform constraints.
+  DNS/connect failures, HTTP 429 rate limits and HTTP 500/502/503/504 responses
+  get at most three attempts with 2- and 4-second backoff; exhausted quotas,
+  authentication errors, timeouts, incomplete responses and invalid generated
+  content are not retried. Missing configuration or any generation/validation
+  failure stops publication; there is no fallback or second AI review call.
+  Requests exceeding the existing 1,000,000-byte transport limit fail without
+  shortening sources. Public failure logs contain generic notices only.
+  Manual `workflow_dispatch` runs skip CI and generate the `release-notes`
   artifact for preview without publishing.
 
 ## Documentation maintenance

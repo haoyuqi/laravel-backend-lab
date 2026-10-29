@@ -19,29 +19,90 @@ class ReleaseNotesTest(unittest.TestCase):
         sleeper.start()
         self.addCleanup(sleeper.stop)
 
-    def test_timeout_recovers_on_third_attempt(self):
-        response = io.BytesIO(json.dumps({'choices': [{'message': {'content': 'Recovered'}}]}).encode())
-        with patch.object(notes.HTTP, 'open', side_effect=[TimeoutError(), TimeoutError(), response]) as call:
-            self.assertEqual('Recovered', notes.complete('https://example.test/v1', 'key', 'model', '', ''))
-        self.assertEqual(3, call.call_count)
 
     def test_transient_failures_stop_after_three_attempts_without_logs(self):
-        for failure in [TimeoutError('private endpoint'), urllib.error.URLError(socket.gaierror('private endpoint')),
-                        http.client.IncompleteRead(b'private response')]:
+        for failure in [urllib.error.URLError(socket.gaierror('private endpoint'))]:
             with self.subTest(failure=type(failure).__name__), patch.object(notes.HTTP, 'open', side_effect=failure) as call, patch('sys.stderr', new_callable=io.StringIO) as log:
                 with self.assertRaises(notes.GenerationError):
                     notes.complete('https://example.test/v1', 'secret', 'model', '', '')
                 self.assertEqual(3, call.call_count)
                 self.assertEqual('', log.getvalue())
 
-    def test_public_warning_never_prints_error_details(self):
-        with patch.object(notes, 'complete', side_effect=notes.GenerationError('private endpoint secret')), patch('sys.stderr', new_callable=io.StringIO) as log:
-            notes.generate(['fix: example'], ('url', 'key', 'model'))
-        self.assertNotIn('private endpoint secret', log.getvalue())
+
+    def context(self):
+        return {'sources': [{'id': 'pr:1', 'title': 'fix: behavior', 'body': 'Full description',
+                             'url': 'https://github.com/owner/repo/pull/1'}], 'runtime_changes': {}}
+
+    def content(self):
+        return json.dumps({'entries': [{'category': 'Fixes', 'sources': ['pr:1'],
+                                       'en': 'Fix behavior.', 'zh': '修复行为异常。'}]}, ensure_ascii=False)
+
+    def test_one_request_returns_both_languages_and_complete_sources(self):
+        context = self.context()
+        context['sources'][0]['body'] = 'full body ' * 20000
+        with patch.object(notes, 'complete', return_value=self.content()) as call:
+            result = notes.generate(context, ('https://example.test/v1', 'private-key', 'private-model'))
+        call.assert_called_once()
+        self.assertEqual(context, json.loads(call.call_args.args[-1]))
+        self.assertIn('<!-- lang:zh -->', result)
+        self.assertIn('修复行为异常。', result)
+        self.assertIn('完整仓库资料', notes.BILINGUAL_PROMPT)
+        self.assertIn('来源覆盖不是实现细节覆盖', notes.BILINGUAL_PROMPT)
+
+    def test_missing_configuration_and_generation_failure_have_no_fallback(self):
+        with patch.object(notes, 'complete') as call:
+            with self.assertRaises(notes.GenerationError):
+                notes.generate(self.context(), ('', '', ''))
+            call.assert_not_called()
+        for failure in [notes.GenerationError('invalid_response'), ValueError('private detail')]:
+            with patch.object(notes, 'complete', side_effect=failure) as call:
+                with self.assertRaises(ValueError):
+                    notes.generate(self.context(), ('url', 'private-key', 'private-model'))
+                call.assert_called_once()
+
+    def test_invalid_content_or_configuration_echo_stops_generation(self):
+        for content in ['private-key', '<!-- lang:zh -->', '{}', 'English only']:
+            with patch.object(notes, 'complete', return_value=content) as call:
+                with self.assertRaises(ValueError):
+                    notes.generate(self.context(), ('https://example.test/v1', 'private-key', 'private-model'))
+                call.assert_called_once()
+
+    def test_timeout_disconnect_and_unknown_network_errors_never_retry(self):
+        for failure in [TimeoutError(), http.client.IncompleteRead(b'partial'),
+                        http.client.RemoteDisconnected(), ConnectionResetError(),
+                        urllib.error.URLError('unknown'), urllib.error.URLError(TimeoutError())]:
+            with self.subTest(failure=type(failure).__name__), patch.object(notes.HTTP, 'open', side_effect=failure) as call:
+                with self.assertRaises(notes.GenerationError):
+                    notes.complete('https://example.test/v1', 'key', 'model', '', '')
+                self.assertEqual(1, call.call_count)
+
+    def test_truncated_or_missing_finish_reason_never_retries(self):
+        for reason in ['length', None, 'content_filter']:
+            response = io.BytesIO(json.dumps({'choices': [{'finish_reason': reason, 'message': {'content': self.content()}}]}).encode())
+            with patch.object(notes.HTTP, 'open', return_value=response) as call:
+                with self.assertRaises(notes.GenerationError):
+                    notes.complete('https://example.test/v1', 'key', 'model', '', '')
+                call.assert_called_once()
+
+    def test_transport_limit_fails_without_sending_or_shortening(self):
+        with patch.object(notes.HTTP, 'open') as call:
+            with self.assertRaises(notes.GenerationError):
+                notes.complete('https://example.test/v1', 'key', 'model', '', 'a' * 1_000_001)
+            call.assert_not_called()
+
+    def test_cli_failure_never_writes_publishable_notes_or_private_details(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'notes.md'
+            with patch('sys.argv', ['release-notes.py', 'generate', '--tag', 'v1.2.3', '--output', str(output)]), patch.object(notes, 'validate', return_value='a' * 40), patch.object(notes, 'git', return_value=''), patch.object(notes, 'release_context', side_effect=ValueError('private endpoint secret')), patch('sys.stderr', new_callable=io.StringIO) as log:
+                with self.assertRaises(SystemExit):
+                    notes.main()
+            self.assertFalse(output.exists())
+            self.assertNotIn('private', log.getvalue())
 
     def test_server_error_recovers_on_retry(self):
         failure = urllib.error.HTTPError('url', 503, 'unavailable', {}, io.BytesIO(b'private response'))
-        response = io.BytesIO(json.dumps({'choices': [{'message': {'content': 'Recovered'}}]}).encode())
+        response = io.BytesIO(json.dumps({'choices': [{'finish_reason': 'stop', 'message': {'content': 'Recovered'}}]}).encode())
         with patch.object(notes.HTTP, 'open', side_effect=[failure, response]) as call:
             self.assertEqual('Recovered', notes.complete('https://example.test/v1', 'key', 'model', '', ''))
         self.assertEqual(2, call.call_count)
@@ -60,7 +121,7 @@ class ReleaseNotesTest(unittest.TestCase):
         self.assertEqual('v3.0.2', notes.previous_tag('v3.0.3', ['3.0.2', 'v3.0.2']))
 
     def test_endpoint_and_request_use_high(self):
-        response = io.BytesIO(json.dumps({'choices': [{'message': {'content': ' Notes '}}]}).encode())
+        response = io.BytesIO(json.dumps({'choices': [{'finish_reason': 'stop', 'message': {'content': ' Notes '}}]}).encode())
         with patch.object(notes.HTTP, 'open', return_value=response) as request:
             self.assertEqual('Notes', notes.complete('https://example.test/v1/', 'secret', 'model', 'system', 'input'))
         outgoing = request.call_args.args[0]
@@ -75,65 +136,15 @@ class ReleaseNotesTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 notes.complete(base, 'key', 'model', '', '')
 
-    def test_both_generation_calls_request_high_and_join_languages(self):
-        with patch.object(notes, 'complete', side_effect=['English', '中文']) as call:
-            result = notes.generate(['fix: repair login'], ('https://example.test/v1', 'key', 'model'))
-        self.assertEqual('English\n\n<!-- lang:zh -->\n\n中文\n', result)
-        self.assertEqual(2, call.call_count)
-        self.assertIn('English', call.call_args.args[-1])
 
-    def test_english_prompt_preserves_engineering_changes(self):
-        context = {'commits': [{'subject': 'test: require complete coverage'}]}
-        with patch.object(notes, 'complete', side_effect=['English', '中文']) as call:
-            notes.generate(context, ('https://example.test/v1', 'key', 'model'))
-        prompt = call.call_args_list[0].args[-2]
-        self.assertIn('engineering lab', prompt)
-        self.assertIn('diagnostic-only', prompt)
-        self.assertIn('file-format change', prompt)
 
-    def test_generation_sends_commit_files_and_version_highlights(self):
-        context = {
-            'commits': [{
-                'subject': 'fix(security): require patched runtimes',
-                'body': 'Raise minimum versions.',
-                'changed_paths': ['composer.json'],
-            }],
-            'changed_files': [{'path': 'composer.json', 'additions': 1, 'deletions': 1}],
-            'version_highlights': {'changed_requirements': {'php': {'before': '^8.4', 'after': '~8.4.27'}}},
-        }
-        with patch.object(notes, 'complete', side_effect=['English', '中文']) as call:
-            notes.generate(context, ('https://example.test/v1', 'key', 'model'))
-        source = json.loads(call.call_args_list[0].args[-1])
-        self.assertEqual('Raise minimum versions.', source['commits'][0]['body'])
-        self.assertEqual(['composer.json'], source['commits'][0]['changed_paths'])
-        self.assertEqual('~8.4.27', source['version_highlights']['changed_requirements']['php']['after'])
 
-    def test_generation_failure_falls_back_without_printing_exception(self):
-        with patch.object(notes, 'complete', side_effect=ValueError('secret endpoint')), patch('sys.stderr', new_callable=io.StringIO) as error:
-            result = notes.generate(['fix: repair login'], ('url', 'key', 'model'))
-        self.assertIn('- fix: repair login', result)
-        self.assertNotIn('secret endpoint', error.getvalue())
-        self.assertIn('Generation failed', error.getvalue())
 
-    def test_translation_failure_keeps_english(self):
-        with patch.object(notes, 'complete', side_effect=['English', TimeoutError()]), patch('sys.stderr', new_callable=io.StringIO):
-            self.assertEqual('English\n', notes.generate(['fix: a'], ('url', 'key', 'model')))
 
-    def test_incomplete_translation_keeps_english(self):
-        with patch.object(notes, 'complete', side_effect=[
-            'English',
-            notes.GenerationError('incomplete_response'),
-        ]), patch('sys.stderr', new_callable=io.StringIO) as error:
-            self.assertEqual('English\n', notes.generate(['fix: a'], ('url', 'key', 'model')))
-        self.assertNotIn('incomplete_response', error.getvalue())
 
-    def test_missing_configuration_falls_back(self):
-        with patch.object(notes, 'complete') as call, patch('sys.stderr', new_callable=io.StringIO):
-            self.assertIn('- fix: a', notes.generate(['fix: a'], ('', '', '')))
-        call.assert_not_called()
 
     def test_empty_or_malformed_responses_are_errors(self):
-        for payload in [{}, {'choices': [{'message': {'content': ' '}}]}, {'choices': [{'message': {'content': ['bad']}}]}]:
+        for payload in [{}, {'choices': ['bad']}, {'choices': [{'message': {'content': ' '}}]}, {'choices': [{'message': {'content': ['bad']}}]}]:
             with patch.object(notes.HTTP, 'open', return_value=io.BytesIO(json.dumps(payload).encode())):
                 with self.assertRaises(ValueError):
                     notes.complete('https://example.test/v1', 'key', 'model', '', '')
@@ -200,21 +211,11 @@ class ReleaseNotesTest(unittest.TestCase):
         self.assertEqual('http_status_401', raised.exception.reason)
 
     def test_redirects_are_not_followed_with_credentials(self):
-        with self.assertRaises(urllib.error.HTTPError):
+        with self.assertRaises(urllib.error.HTTPError) as raised:
             notes.NoRedirect().redirect_request(notes.urllib.request.Request('https://example.test'), None, 302, 'found', {}, 'https://other.test')
+        raised.exception.close()
 
-    def test_output_cannot_echo_configuration_or_inject_language_separator(self):
-        for output in ['secret-key', 'https://example.test/v1', 'model-id', '<!-- lang:zh -->']:
-            with patch.object(notes, 'complete', return_value=output), patch('sys.stderr', new_callable=io.StringIO):
-                result = notes.generate(['fix: a'], ('https://example.test/v1', 'secret-key', 'model-id'))
-            self.assertIn('- fix: a', result)
 
-    def test_oversized_context_falls_back_before_request(self):
-        with patch.object(notes, 'complete', return_value='Done') as call, patch('sys.stderr', new_callable=io.StringIO) as error:
-            result = notes.generate(['a' * 5000] * 1000, ('url', 'key', 'model'))
-        self.assertIn('- ' + 'a' * 500, result)
-        self.assertNotIn('context_too_large', error.getvalue())
-        call.assert_not_called()
 
     def test_only_direct_dependencies_are_selected_from_lockfile(self):
         manifest = {'require': {'livewire/livewire': '^4.4'}, 'require-dev': {'phpunit/phpunit': '^12'}}
