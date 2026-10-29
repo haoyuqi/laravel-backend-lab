@@ -155,6 +155,20 @@ module responsibilities or runtime paths change.
 - CI (`sqlite-tests` + `.github/scripts/ci-summary.py`) enforces 100% executable
   line coverage across `app/` by comparing raw `coveredstatements` and
   `statements` counts in `coverage.xml`.
+- Browser CI runs three independent jobs for Chromium (desktop + Pixel 7),
+  Firefox (desktop), and WebKit (desktop + iPhone 15). Each job provisions its
+  own PostgreSQL/Redis services and authentication state; tests within a job
+  retain one worker because they share the seeded database and admin session.
+  Jobs install system dependencies only for their engine and cache browser
+  binaries by OS, architecture, engine, and npm lockfile. System dependencies
+  are installed even on cache hits. Reverb runs once in the Chromium job.
+  `PLAYWRIGHT_SETUP_BROWSER` selects the same engine for the login dependency,
+  so Firefox and WebKit jobs do not require an extra Chromium installation.
+  The `browser-tests` matrix must all pass before `CI result` succeeds, and
+  failure reports use engine-specific artifact names.
+- Playwright starts Laravel with `serve --no-reload` so the PHP server retains
+  the supplied test database and ephemeral Reverb environment overrides instead
+  of reloading development values from `.env`.
 - Tagging a commit reachable from `master` with a canonical `vX.Y.Z` tag runs
   [.github/workflows/release.yml](../.github/workflows/release.yml): it validates
   tag ancestry, runs the reusable `tests.yml` workflow, generates bilingual

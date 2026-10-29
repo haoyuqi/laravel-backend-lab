@@ -59,6 +59,10 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
+      use: {
+        // Engine-only CI jobs must authenticate with the installed browser.
+        browserName: (process.env.PLAYWRIGHT_SETUP_BROWSER || 'chromium') as 'chromium' | 'firefox' | 'webkit',
+      },
     },
     {
       name: 'chromium',
@@ -103,7 +107,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'php artisan serve --host 127.0.0.1 --port 8000',
+    // Auto-reload filters environment overrides before starting PHP's server.
+    command: 'php artisan serve --no-reload --host 127.0.0.1 --port 8000',
     cwd: rootDir,
     url: 'http://127.0.0.1:8000/up',
     reuseExistingServer: !process.env.CI,

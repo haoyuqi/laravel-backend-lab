@@ -276,6 +276,15 @@ php artisan db:seed --class=E2EDataSeeder --database=testing
 npm run test:e2e
 ```
 
+本地快速验证可以选择浏览器项目，默认命令仍运行全部五种桌面与移动端配置：
+
+```bash
+npm run test:e2e -- --project=chromium --project="Mobile Chrome"
+```
+
+CI 按三种浏览器引擎并行运行，保留全部桌面与移动端覆盖。服务隔离和缓存边界见
+[测试隔离说明](docs/architecture.md#test-isolation-and-coverage-gate)。
+
 ## 运维
 
 生产环境启用定时功能时，需要每分钟运行 Laravel 调度器。使用异步队列连接时，
