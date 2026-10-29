@@ -10,9 +10,6 @@ import urllib.error
 from unittest.mock import patch
 from pathlib import Path
 
-import release_render as render
-import release_sources as sources
-
 SPEC = importlib.util.spec_from_file_location('release_notes', Path(__file__).with_name('release-notes.py'))
 notes = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(notes)
@@ -267,16 +264,16 @@ class SourcesTest(unittest.TestCase):
 
     def test_collects_full_pr_once_and_preserves_unmatched_commit(self):
         description = 'complete PR body ' * 1000
-        with patch.object(sources, 'github_pulls', side_effect=[[], [pull(body=description)]]):
-            result = sources.collect_sources('v1..v2', REPO, self.history)
+        with patch.object(notes, 'github_pulls', side_effect=[[], [pull(body=description)]]):
+            result = notes.collect_sources('v1..v2', REPO, self.history)
         self.assertEqual(['commit:' + A, 'pr:1'], [row['id'] for row in result])
         self.assertEqual('complete body ' * 500, result[0]['body'])
         self.assertEqual(description, result[1]['body'])
         self.assertEqual('https://github.com/' + REPO + '/pull/1', result[1]['url'])
 
     def test_deduplicates_pr_associated_with_multiple_commits(self):
-        with patch.object(sources, 'github_pulls', return_value=[pull()]):
-            result = sources.collect_sources('range', REPO, self.history)
+        with patch.object(notes, 'github_pulls', return_value=[pull()]):
+            result = notes.collect_sources('range', REPO, self.history)
         self.assertEqual(1, len(result))
         self.assertEqual('pr:1', result[0]['id'])
         self.assertEqual([A, B], result[0]['commits'])
@@ -284,26 +281,26 @@ class SourcesTest(unittest.TestCase):
     def test_unmerged_later_and_foreign_prs_remain_direct_commits(self):
         unmerged = pull(); unmerged['merged_at'] = None
         foreign = pull(); foreign['base']['repo']['full_name'] = 'other/repo'
-        with patch.object(sources, 'github_pulls', return_value=[unmerged, foreign, pull(merge=C)]):
-            result = sources.collect_sources('range', REPO, self.history)
+        with patch.object(notes, 'github_pulls', return_value=[unmerged, foreign, pull(merge=C)]):
+            result = notes.collect_sources('range', REPO, self.history)
         self.assertEqual(['commit:' + A, 'commit:' + B], [row['id'] for row in result])
 
     def test_includes_merge_commits_in_history_and_rejects_api_failure(self):
-        with patch.object(sources, 'github_pulls', side_effect=ValueError('failure')):
+        with patch.object(notes, 'github_pulls', side_effect=ValueError('failure')):
             with self.assertRaises(ValueError):
-                sources.collect_sources('range', REPO, self.history)
+                notes.collect_sources('range', REPO, self.history)
         calls = []
         def history(*args):
             calls.append(args)
             return self.history(*args)
-        with patch.object(sources, 'github_pulls', return_value=[]):
-            sources.collect_sources('range', REPO, history)
+        with patch.object(notes, 'github_pulls', return_value=[]):
+            notes.collect_sources('range', REPO, history)
         self.assertNotIn('--no-merges', calls[0])
 
     def test_github_api_uses_all_pages_and_discards_stderr(self):
         pages = json.dumps([[pull()], [pull(number=2)]]).encode()
-        with patch.object(sources.subprocess, 'check_output', return_value=pages) as run:
-            self.assertEqual(2, len(sources.github_pulls(REPO, A)))
+        with patch.object(notes.subprocess, 'check_output', return_value=pages) as run:
+            self.assertEqual(2, len(notes.github_pulls(REPO, A)))
         command = run.call_args.args[0]
         self.assertIn('--paginate', command)
         self.assertIn('--slurp', command)
@@ -311,12 +308,12 @@ class SourcesTest(unittest.TestCase):
 
     def test_bad_api_response_and_repository_are_rejected(self):
         for raw in [b'{}', b'[{}]', b'[[1]]']:
-            with patch.object(sources.subprocess, 'check_output', return_value=raw):
+            with patch.object(notes.subprocess, 'check_output', return_value=raw):
                 with self.assertRaises(ValueError):
-                    sources.github_pulls(REPO, A)
-        with patch.object(sources.subprocess, 'check_output') as run:
+                    notes.github_pulls(REPO, A)
+        with patch.object(notes.subprocess, 'check_output') as run:
             with self.assertRaises(ValueError):
-                sources.collect_sources('range', '../unsafe', self.history)
+                notes.collect_sources('range', '../unsafe', self.history)
             run.assert_not_called()
 
     def test_runtime_requirements_include_add_change_and_removal(self):
@@ -324,7 +321,7 @@ class SourcesTest(unittest.TestCase):
         after = {'require': {'php': '~8.4.27 || ^8.5.12', 'ext-new': '*', 'vendor/package': '^2'}}
         def history(*args):
             return json.dumps(before if args[-1].startswith('old:') else after)
-        result = sources.runtime_changes('old', 'new', history)
+        result = notes.runtime_changes('old', 'new', history)
         self.assertEqual({'before': '^8.4', 'after': '~8.4.27 || ^8.5.12'}, result['php'])
         self.assertEqual({'before': '*', 'after': None}, result['ext-old'])
         self.assertEqual({'before': None, 'after': '*'}, result['ext-new'])
@@ -333,14 +330,14 @@ class SourcesTest(unittest.TestCase):
     def test_runtime_manifest_is_required_and_strict(self):
         for raw in ['invalid', '[]', '{"require": []}', '{"require":{"php":8.4}}']:
             with self.subTest(raw=raw), self.assertRaises(ValueError):
-                sources.runtime_changes(None, 'new', lambda *args: raw)
+                notes.runtime_changes(None, 'new', lambda *args: raw)
         with self.assertRaises(subprocess.CalledProcessError):
-            sources.runtime_changes('old', 'new', lambda *args: (_ for _ in ()).throw(subprocess.CalledProcessError(1, 'git')))
+            notes.runtime_changes('old', 'new', lambda *args: (_ for _ in ()).throw(subprocess.CalledProcessError(1, 'git')))
 
     def test_initial_release_and_unchanged_runtime(self):
         manifest = lambda *args: '{"require":{"php":"^8.4"}}'
-        self.assertEqual({'php': {'before': None, 'after': '^8.4'}}, sources.runtime_changes(None, 'new', manifest))
-        self.assertEqual({}, sources.runtime_changes('old', 'new', manifest))
+        self.assertEqual({'php': {'before': None, 'after': '^8.4'}}, notes.runtime_changes(None, 'new', manifest))
+        self.assertEqual({}, notes.runtime_changes('old', 'new', manifest))
 
 
 class GitFixtureTest(unittest.TestCase):
@@ -371,8 +368,8 @@ class GitFixtureTest(unittest.TestCase):
                 if sha == squash:
                     return [pull(2, merge=squash)]
                 return []
-            with patch.object(sources, 'github_pulls', side_effect=prs):
-                rows = sources.collect_sources('v1.0.0..HEAD', REPO, git)
+            with patch.object(notes, 'github_pulls', side_effect=prs):
+                rows = notes.collect_sources('v1.0.0..HEAD', REPO, git)
             self.assertEqual(['pr:1', 'pr:2', 'commit:' + direct], [row['id'] for row in rows])
             self.assertEqual([feature, merge], rows[0]['commits'])
             self.assertEqual('rebase full body', rows[2]['body'])
@@ -384,7 +381,7 @@ class RenderTest(unittest.TestCase):
         self.entry = {'category': 'Fixes', 'sources': ['pr:1'], 'en': 'Fix stale requests.', 'zh': '修复旧请求覆盖新结果的问题。'}
 
     def result(self, entry=None, **kwargs):
-        return render.render_notes(json.dumps({'entries': [entry or self.entry]}, ensure_ascii=False), self.sources, **kwargs)
+        return notes.render_notes(json.dumps({'entries': [entry or self.entry]}, ensure_ascii=False), self.sources, **kwargs)
 
     def test_renders_bilingual_notes_and_program_owned_sources(self):
         result = self.result()
@@ -397,7 +394,7 @@ class RenderTest(unittest.TestCase):
             with self.subTest(ids=ids), self.assertRaises(ValueError):
                 self.result({**self.entry, 'sources': ids})
         with self.assertRaises(ValueError):
-            render.render_notes(json.dumps({'entries': [self.entry]}), self.sources + [{'id': 'pr:2', 'url': 'url'}])
+            notes.render_notes(json.dumps({'entries': [self.entry]}), self.sources + [{'id': 'pr:2', 'url': 'url'}])
 
     def test_empty_one_language_wrong_type_and_unknown_category_fail(self):
         for changed in [{'zh': ''}, {'en': ' '}, {'en': []}, {'sources': 'pr:1'}, {'category': 'Unknown'}, {'zh': 'only English'}]:
@@ -407,7 +404,7 @@ class RenderTest(unittest.TestCase):
     def test_invalid_json_fenced_json_empty_and_wrong_shape_fail(self):
         for content in ['bad', '```json\n{}\n```', '{}', '[]', '{"entries":[]}', '{"entries":[1]}']:
             with self.subTest(content=content), self.assertRaises(ValueError):
-                render.render_notes(content, self.sources)
+                notes.render_notes(content, self.sources)
 
     def test_injected_markdown_links_separator_and_html_are_rejected(self):
         for text in ['text\n### New heading', '<!-- lang:zh -->', '[link](https://evil.test)', '<img src=x>', '![image](x)']:
