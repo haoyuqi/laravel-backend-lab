@@ -55,7 +55,7 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: 'npm run build && php artisan serve --host=0.0.0.0 --port=8000',
+      command: 'npm run build && php artisan serve --no-reload --host=0.0.0.0 --port=8000',
       cwd: rootDir,
       url: `${env.APP_URL}/up`,
       env,

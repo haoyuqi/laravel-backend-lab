@@ -324,6 +324,17 @@ php artisan db:seed --class=E2EDataSeeder --database=testing
 npm run test:e2e
 ```
 
+For a quicker local check, select a browser project (the default still runs all
+five desktop/mobile configurations):
+
+```bash
+npm run test:e2e -- --project=chromium --project="Mobile Chrome"
+```
+
+CI runs the three browser engines in parallel jobs while retaining every
+desktop/mobile configuration. See [test isolation](docs/architecture.md#test-isolation-and-coverage-gate)
+for the service and cache boundaries.
+
 ## Operations
 
 Production deployments should run the Laravel scheduler every minute when its
