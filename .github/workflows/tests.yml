@@ -23,19 +23,23 @@ concurrency:
 jobs:
   release-script-tests:
     name: Release script tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14.10'
       - env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 -m unittest discover -s .github/scripts -p "test_*.py"
 
   pint:
     name: Laravel Pint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
 
     steps:
@@ -49,8 +53,9 @@ jobs:
         env:
           update: 'true'
         with:
-          php-version: '8.4'
+          php-version: '8.4.27'
           extensions: mbstring
+          tools: composer:2.10.3
           coverage: none
 
       - name: Get Composer cache directory
@@ -72,7 +77,7 @@ jobs:
 
   production-smoke:
     name: Production installation smoke test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     env:
       APP_ENV: production
@@ -95,9 +100,9 @@ jobs:
         env:
           update: 'true'
         with:
-          php-version: '8.4'
+          php-version: '8.4.27'
           extensions: redis, pdo_sqlite
-          tools: composer:v2
+          tools: composer:2.10.3
           coverage: none
 
       - name: Set production smoke database path
@@ -124,14 +129,14 @@ jobs:
 
   sqlite-tests:
     name: SQLite tests (PHP 8.4)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     env:
       MIN_LINE_COVERAGE: '100'
 
     services:
       redis:
-        image: redis:7-alpine
+        image: redis:7.4.12-alpine@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
         ports:
           - 6379:6379
         options: >-
@@ -146,23 +151,28 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14.10'
+
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         env:
           update: 'true'
         with:
-          php-version: '8.4'
+          php-version: '8.4.27'
           extensions: redis, pdo, pdo_sqlite
-          tools: composer:v2
+          tools: composer:2.10.3
           coverage: pcov
 
       - name: Cache Composer downloads
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/composer/files
-          key: composer-${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.lock') }}
+          key: composer-${{ runner.os }}-php-8.4.27-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
-            composer-${{ runner.os }}-php-8.4-
+            composer-${{ runner.os }}-php-8.4.27-
 
       - name: Copy environment configuration
         run: cp .env.example .env
@@ -212,19 +222,19 @@ jobs:
 
   php-tests:
     name: PHP tests (PHP ${{ matrix.php-version }}, ${{ matrix.db.name }} ${{ matrix.db.version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
 
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.4']
+        php-version: ['8.4.27']
         db:
           - name: mysql
-            version: '8.0'
+            version: '8.0.46'
             driver: mysql
             service-port: 3306
-            image: mysql:8.0
+            image: mysql:8.0.46@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
             env:
               MYSQL_ALLOW_EMPTY_PASSWORD: yes
               MYSQL_DATABASE: laravel
@@ -233,10 +243,10 @@ jobs:
             test-db-user: root
             test-db-password: ''
           - name: mysql
-            version: '8.4'
+            version: '8.4.13'
             driver: mysql
             service-port: 3306
-            image: mysql:8.4
+            image: mysql:8.4.13@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
             env:
               MYSQL_ALLOW_EMPTY_PASSWORD: yes
               MYSQL_DATABASE: laravel
@@ -245,10 +255,10 @@ jobs:
             test-db-user: root
             test-db-password: ''
           - name: postgres
-            version: '17'
+            version: '17.11'
             driver: pgsql
             service-port: 5432
-            image: postgres:17
+            image: postgres:17.11@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
             env:
               POSTGRES_USER: root
               POSTGRES_PASSWORD: password
@@ -258,10 +268,10 @@ jobs:
             test-db-user: root
             test-db-password: password
           - name: postgres
-            version: '18'
+            version: '18.6'
             driver: pgsql
             service-port: 5432
-            image: postgres:18
+            image: postgres:18.6@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81
             env:
               POSTGRES_USER: root
               POSTGRES_PASSWORD: password
@@ -283,7 +293,7 @@ jobs:
           --health-timeout=5s
           --health-retries=5
       redis:
-        image: redis:7-alpine
+        image: redis:7.4.12-alpine@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
         ports:
           - 6379:6379
         options: >-
@@ -298,6 +308,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14.10'
+
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         env:
@@ -305,7 +320,7 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           extensions: redis, pdo, pdo_mysql, pdo_pgsql, pdo_sqlite
-          tools: composer:v2
+          tools: composer:2.10.3
           coverage: none
 
       - name: Cache Composer downloads
@@ -356,7 +371,7 @@ jobs:
 
   security-checks:
     name: Security checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
 
     steps:
@@ -370,8 +385,8 @@ jobs:
         env:
           update: 'true'
         with:
-          php-version: '8.4'
-          tools: composer:v2
+          php-version: '8.4.27'
+          tools: composer:2.10.3
           coverage: none
 
       - name: Validate Composer configuration
@@ -386,8 +401,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '^24.22.1'
-          check-latest: true
+          node-version: '24.22.1'
           cache: npm
 
       - name: Audit Node dependencies
@@ -414,7 +428,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:18
+        image: postgres:18.6@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81
         env:
           POSTGRES_USER: root
           POSTGRES_PASSWORD: password
@@ -427,7 +441,7 @@ jobs:
           --health-timeout=5s
           --health-retries=5
       redis:
-        image: redis:7-alpine
+        image: redis:7.4.12-alpine@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
         ports:
           - 6379:6379
         options: >-
@@ -447,16 +461,15 @@ jobs:
         env:
           update: 'true'
         with:
-          php-version: '8.4'
+          php-version: '8.4.27'
           extensions: redis, pdo_pgsql
-          tools: composer:v2
+          tools: composer:2.10.3
           coverage: none
 
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '^24.22.1'
-          check-latest: true
+          node-version: '24.22.1'
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -464,9 +477,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/composer/files
-          key: composer-${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.lock') }}
+          key: composer-${{ runner.os }}-php-8.4.27-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
-            composer-${{ runner.os }}-php-8.4-
+            composer-${{ runner.os }}-php-8.4.27-
 
       - name: Copy environment configuration
         run: cp .env.example .env
@@ -567,7 +580,7 @@ jobs:
     name: CI result
     if: ${{ always() }}
     needs: [release-script-tests, pint, production-smoke, sqlite-tests, php-tests, security-checks, browser-tests]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     env:
       MIN_LINE_COVERAGE: '100'
@@ -583,6 +596,10 @@ jobs:
           pattern: ci-data-*
           path: ci-data
           merge-multiple: true
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14.10'
       - name: Write run summary
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
