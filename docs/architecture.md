@@ -159,8 +159,11 @@ module responsibilities or runtime paths change.
   Firefox (desktop), and WebKit (desktop + iPhone 15). Each job provisions its
   own PostgreSQL/Redis services and authentication state; tests within a job
   retain one worker because they share the seeded database and admin session.
-  Jobs install system dependencies only for their engine and cache browser
-  binaries by OS, architecture, engine, and npm lockfile. System dependencies
+  Browser jobs pin Ubuntu 24.04 so `ubuntu-latest` image migrations cannot
+  change the native-library baseline unexpectedly. Jobs install system
+  dependencies only for their engine and cache browser binaries by Ubuntu
+  release, architecture, engine, and npm lockfile. Change the cache namespace
+  together with the pinned runner when upgrading Ubuntu. System dependencies
   are installed even on cache hits. Reverb runs once in the Chromium job.
   `PLAYWRIGHT_SETUP_BROWSER` selects the same engine for the login dependency,
   so Firefox and WebKit jobs do not require an extra Chromium installation.

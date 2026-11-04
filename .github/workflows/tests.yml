@@ -395,7 +395,8 @@ jobs:
 
   browser-tests:
     name: Browser tests (${{ matrix.browser }})
-    runs-on: ubuntu-latest
+    # Keep browser binaries and their native libraries on the same OS release.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       PLAYWRIGHT_SETUP_BROWSER: ${{ matrix.browser }}
@@ -496,7 +497,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ matrix.browser }}-${{ hashFiles('package-lock.json') }}
+          key: ${{ format('playwright-{0}-{1}-{2}-{3}', 'ubuntu-24.04', runner.arch, matrix.browser, hashFiles('package-lock.json')) }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
