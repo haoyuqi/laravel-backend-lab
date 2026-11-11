@@ -1,17 +1,17 @@
 # Laravel Backend Lab
 
 <p align="center">
-  一个用于实践现代后端架构、后台管理、队列、可观测性与自动化运维的<br>
-  Laravel 应用项目。
+  一个用于探索现代后端架构、后台工作流、队列、可观测性和自动化运维的<br>
+  Laravel 实战应用。
 </p>
 
 <p align="center">
-  <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml"><img alt="测试状态" src="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml/badge.svg?branch=master"></a>
-  <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml?query=branch%3Amaster"><img alt="覆盖率" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fhaoyuqi%2Flaravel-backend-lab%2Fcoverage-badge%2Fcoverage.json"></a>
-  <a href="https://www.php.net/"><img alt="PHP 8.4.27+ 或 8.5.12+" src="https://img.shields.io/badge/PHP-8.4.27%2B%20%7C%208.5.12%2B-777BB4?logo=php&logoColor=white"></a>
+  <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml/badge.svg?branch=master"></a>
+  <a href="https://github.com/haoyuqi/laravel-backend-lab/actions/workflows/tests.yml?query=branch%3Amaster"><img alt="Coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com/haoyuqi%2Flaravel-backend-lab%2Fcoverage-badge%2Fcoverage.json"></a>
+  <a href="https://www.php.net/"><img alt="PHP 8.4.27+ or 8.5.12+" src="https://img.shields.io/badge/PHP-8.4.27%2B%20%7C%208.5.12%2B-777BB4?logo=php&logoColor=white"></a>
   <a href="https://laravel.com/"><img alt="Laravel 13" src="https://img.shields.io/badge/Laravel-13.x-FF2D20?logo=laravel&logoColor=white"></a>
   <a href="https://filamentphp.com/"><img alt="Filament 5" src="https://img.shields.io/badge/Filament-5.x-FDAE4B"></a>
-  <a href="LICENSE"><img alt="MIT 许可证" src="https://img.shields.io/github/license/haoyuqi/laravel-backend-lab"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/haoyuqi/laravel-backend-lab"></a>
 </p>
 
 <p align="center">
@@ -20,119 +20,23 @@
 
 ## 项目简介
 
-Laravel Backend Lab 是一个参考应用和学习环境，围绕接近生产实践的
-Laravel 后端构建。项目在同一代码库中整合了管理后台、访客分析、队列、
-定时维护、备份和可观测性。
-
-本仓库是一个完整应用，不是可复用的 Laravel 扩展包，也不是通用项目模板。
-
-> 本项目在 AI 辅助下开发，并由维护者进行审核。
-
-## 主要功能
-
-- 位于 `/admin` 的 Filament 管理后台，支持访客和黑名单管理。
-- 展示流量统计、应用信息和服务健康状态的后台仪表盘组件。
-- 访客记录、IP 地理位置查询和黑名单拦截。
-- 可配置的队列处理，以及可选的 Redis 和 Laravel Horizon 监控。
-- 使用 Laravel Telescope 和 Debugbar 进行应用调试与观测。
-- 定时执行备份、数据清理、访客统计汇总和 Bing 壁纸下载。
-- 使用 Vite 构建 Vue 3 与 Bootstrap 5 前端资源。
-- 使用独立测试数据库连接的 PHPUnit 单元与功能测试，以及 Playwright
-  端到端浏览器测试。
-
-应用健康检查地址为 `/up`（就绪探针为 `/health/ready`）。
-
-### 后台操作日志
-
-后台的 **系统 → 操作日志** 在同一数据库事务中记录后台数据变更及成功登录、主动退出。
-查看、搜索、失败登录、无实际变化的操作，以及任务或 CLI 直接写入不会记录；不采集请求正文、
-Cookie、凭据或用户邮箱。
-
-日志包含操作人姓名和 IP 等个人数据，默认保留直到人工清理。先预览待清理数量：
-
-```bash
-php artisan admin-operation-logs:prune --days=365
-```
-
-确认数量并备份历史后，添加 `--force` 才会按每批最多 1,000 条删除过期日志（最短保留 30 天）。
-部署前请查看 [UPGRADE.md](UPGRADE.md)。
-
-## 技术栈
-
-| 组件 | 版本 | 用途 |
-| --- | --- | --- |
-| [PHP](https://www.php.net/) | 8.4+ | 应用运行环境 |
-| [Laravel](https://laravel.com/) | 13.x | Web 应用框架 |
-| [Filament](https://filamentphp.com/) | 5.x | 管理后台 |
-| [Laravel Horizon](https://laravel.com/docs/horizon) | 5.x | Redis 队列监控 |
-| [Laravel Telescope](https://laravel.com/docs/telescope) | 5.x | 本地应用观测 |
-| [Laravel Lang](https://laravel-lang.com/) | 6.x | 应用语言包 |
-| [Laravel Backup](https://github.com/spatie/laravel-backup) | 10.x | 数据库与文件备份 |
-| [Vite](https://vite.dev/) | 6.x | 前端开发与生产构建 |
-| [Vue](https://vuejs.org/) | 3.x | 交互式前端组件 |
-| [Bootstrap](https://getbootstrap.com/) | 5.x | 前端样式 |
+Laravel Backend Lab 是一个以生产环境后端为目标的参考应用，把后台管理、访客统计、
+队列、定时维护、备份和可观测性放在同一个代码库里。它是应用，不是可复用包，也不是
+通用项目脚手架。
 
 ## 环境要求
 
-应用需要：
-
-- PHP 8.4.x（最低 8.4.27），或 PHP 8.5 及之后的 PHP 8.x 版本（最低 8.5.12），以及 `composer.lock` 所要求的 PHP 扩展；
+- PHP 8.4.27 或更高版本，或 PHP 8.5.12 或更高版本，并安装 `composer.lock`
+  要求的扩展；
 - Composer 2；
-- Node.js 24 LTS（24.22.1 或更高版本）和 npm；
-- SQLite、MySQL 或 PostgreSQL，用于持久化应用数据；
-- Redis，用于访客统计和相关定时任务；
-- 生产环境中需要 Laravel 支持的 Web 服务器。
-
-Laravel 管理的缓存、会话、队列和广播不一定要使用 Redis。但是当前应用的访客计数、
-仪表盘统计和维护命令会直接访问 Redis，因此 Redis 服务本身仍然是必需的。
-如果要让 Redis 完全可选，需要修改应用代码，仅修改 `.env` 并不足够。
-
-## 服务与配置
-
-| 服务 | 是否必需 | 配置与替代方案 |
-| --- | --- | --- |
-| 数据库 | 是 | 设置 `DB_CONNECTION` 和对应的 `DB_*`。支持 SQLite、MySQL 和 PostgreSQL。 |
-| Redis | 是 | 访客统计、仪表盘组件和定时清理会直接使用。黑名单拦截直接读取数据库，避免旧缓存改变判断。可以通过 `REDIS_*` 修改主机、端口、凭据、客户端和数据库编号。 |
-| 队列 Worker | 否 | 仅异步队列连接需要。`sync` 驱动会在当前请求中直接处理任务。 |
-| Horizon | 否 | 必须同时使用 Redis 和 Redis 队列；使用 `sync` 或非 Redis 队列时不需要。 |
-| 调度器 | 按功能需要 | 每分钟运行 `php artisan schedule:run`，可启用定时备份、清理、统计和维护任务。 |
-| 邮件服务器 | 否 | 开发环境可使用 `MAIL_MAILER=log`；需要发送邮件时再配置 SMTP。 |
-| 对象存储 | 否 | 默认本地文件系统不需要 S3；需要外部存储时再配置 `FILESYSTEM_DRIVER`、`FILESYSTEM_CLOUD` 和 `AWS_*`。 |
-| 实时事件服务器 | 否 | 不使用实时事件时保持 `BROADCAST_CONNECTION=log` 并留空 `REVERB_APP_KEY`。启用 Laravel Reverb 后可实时更新时间，无需 Redis 广播服务器。 |
-| Telescope 与 Debugbar | 否 | 不希望这些调试工具收集数据或暴露界面时，设置 `TELESCOPE_ENABLED=false` 和 `DEBUGBAR_ENABLED=false`。 |
-
-常用环境变量包括：
-
-- `APP_URL`：应用公开地址；
-- `ADMIN_EMAILS`：生产环境管理员邮箱白名单，多个值使用英文逗号分隔；
-- `DB_*`：数据库连接；
-- `REDIS_CLIENT`、`REDIS_HOST`、`REDIS_PASSWORD` 和 `REDIS_PORT`：Redis 连接；
-- `CACHE_STORE`、`SESSION_DRIVER` 和 `QUEUE_CONNECTION`：状态与任务存储；
-- `BROADCAST_CONNECTION`、`REVERB_*` 和 `REVERB_CLIENT_*`：实时事件；
-- `MAIL_MAILER` 和 `MAIL_*`：邮件发送；
-- `FILESYSTEM_DRIVER`、`FILESYSTEM_CLOUD` 和 `AWS_*`：文件存储；
-- `TELESCOPE_ENABLED` 和 `DEBUGBAR_ENABLED`：可选的应用调试工具；
-- `TEST_DB_*`：独立的非默认测试数据库。
-
-队列和排序演示接口默认关闭，确需公开时设置 `DEMO_ROUTES_ENABLED=true`。
-接口按 IP 共用每分钟 10 次的限制，单次最多处理 1,000 项。创建演示任务改用
-`POST /queue/create`，并提交正常的 Web CSRF token。
-
-部署在反向代理后时，将 `TRUSTED_PROXIES` 设置为代理地址或 CIDR 范围，多个值用
-英文逗号分隔。只信任自己控制的代理，其他地址发送的转发客户端头不会被采信。
-
-备份使用 `DB_CONNECTION` 指定的连接。配置单个有效的 `BACKUP_NOTIFICATION_EMAIL`
-和邮件发送服务后，才会启用备份失败通知。默认备份仍保存在本地；应定期将备份恢复到
-隔离数据库，验证恢复能力。任务锁防止同一命令重复运行；多服务器部署需使用共享锁
-存储，并指定一台服务器运行调度器。
-
-新的访客与拦截日志仅保存请求路径，移除查询参数和片段，最长 2,048 字节。
-历史日志不会自动重写。Telescope 在本地环境也会隐藏 Livewire 组件请求和响应内容，
-避免登录信息随组件快照保存。
+- SQLite、MySQL 或 PostgreSQL；
+- Redis，访客统计、仪表盘和定时维护会直接访问；
+- 仅在从源码构建前端资源时需要 Node.js 24 和 npm；
+- 生产环境需要 Laravel 支持的 Web 服务器。
 
 ## 安装
 
-克隆项目并安装锁定的依赖：
+### 从源码安装
 
 ```bash
 git clone git@github.com:haoyuqi/laravel-backend-lab.git
@@ -143,7 +47,7 @@ npm ci
 npm run build
 ```
 
-运行迁移前选择数据库并修改 `.env`。例如 MySQL 可以配置为：
+运行迁移前先在 `.env` 中选择数据库，例如：
 
 ```dotenv
 APP_URL=http://localhost
@@ -156,19 +60,10 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-Laravel 的缓存、会话、队列和广播可以不存入 Redis。如果只让当前必须依赖 Redis 的
-应用功能使用它，可以设置：
+Laravel 的缓存、会话、队列和广播可以不使用 Redis，但访客统计等功能仍会直接
+访问 Redis。可用的存储和服务见[配置说明](docs/configuration.md)。
 
-```dotenv
-CACHE_STORE=file
-SESSION_DRIVER=file
-QUEUE_CONNECTION=sync
-BROADCAST_CONNECTION=log
-```
-
-这些配置可以减少 Redis 的用途，但无法消除访客统计功能对 Redis 的直接调用。
-
-完成应用初始化：
+完成初始化：
 
 ```bash
 php artisan key:generate
@@ -177,133 +72,36 @@ php artisan migrate
 php artisan make:filament-user
 ```
 
-将 Web 服务器的文档根目录指向项目的 `public` 目录。本地体验时可以使用
-`php artisan serve` 启动 Laravel 开发服务器，然后使用上一步创建的 Filament
-用户登录 `/admin`。
+将 Web 服务器的文档根目录指向项目的 `public` 目录，本地体验也可以使用
+`php artisan serve`，然后登录 `/admin`。生产环境中 `ADMIN_EMAILS` 必须填写
+管理员邮箱列表；留空会拒绝所有后台访问。
 
-生产环境中，`ADMIN_EMAILS` 必须设置为允许访问后台的管理员邮箱列表，多个邮箱用
-英文逗号分隔。生产环境中留空会拒绝所有用户访问后台。
+### 使用 Docker
 
-## 容器镜像
+`linux/amd64` 和 `linux/arm64` 的单镜像发布在
+`ghcr.io/haoyuqi/laravel-backend-lab`。镜像默认提供 HTTP 访问，也可以通过覆盖
+命令运行队列、调度器和 Reverb。启动时不会生成 `APP_KEY`、执行迁移或创建
+管理员。
 
-生产镜像发布在 `ghcr.io/haoyuqi/laravel-backend-lab`，支持 `linux/amd64` 和
-`linux/arm64`。镜像默认提供 HTTP 访问，也可以通过覆盖命令运行队列、调度器和
-Reverb。完整的 `X.Y.Z` 标签不可变；`X.Y`、`X` 和 `latest` 只向前移动。
+快速启动、必填环境变量和持久化卷见[容器安装](docs/container.md)。
 
-镜像不会在启动时生成 `APP_KEY`、执行迁移或创建管理员。配置、服务命令、持久化
-卷、健康检查、备份和 Reverb 设置见 [docs/container.md](docs/container.md)。
+## 文档
 
-## 本地开发
-
-启动 Vite 开发服务器：
-
-```bash
-npm run dev
-```
-
-使用 `npm run build` 生成优化后的前端资源。请勿继续使用早期版本中已经移除的
-Laravel Mix 命令。
-
-升级现有安装时，请先阅读 [UPGRADE.md](UPGRADE.md) 中的 v3.0.2 升级流程。
-此补丁移除未使用的 Laravel Admin 资源，没有新增数据库迁移。使用文件覆盖
-部署时，还须删除旧的 `public/vendor/laravel-admin/` 目录并清除其缓存副本。
-升级后将现有环境中的 `APP_VERSION` 更新为 `3.0.2`。更早版本的安装还须完成
-适用的 v3.0.0、v3.0.1 升级流程及其必要的数据库迁移。
-
-### 本地实时更新时间
-
-`/time` 使用 [Laravel Reverb](https://laravel.com/docs/13.x/reverb) 和 Laravel
-Echo。不开启广播也可以正常显示初始时间。启用实时更新时，先生成本地凭据：
-
-```bash
-php artisan reverb:install
-```
-
-设置 `BROADCAST_CONNECTION=reverb`、`REVERB_HOST=localhost`、
-`REVERB_PORT=8080`、`REVERB_SCHEME=http`，单进程保持
-`REVERB_SCALING_ENABLED=false`。浏览器使用 `REVERB_CLIENT_*`，由服务端在请求时
-渲染，未设置时回退到 `REVERB_*`。浏览器通过容器服务名或反向代理访问 Reverb
-时，设置 `REVERB_CLIENT_HOST`。密钥不会被渲染；修改这些值后无需重新构建前端。
-
-在不同终端运行：
-
-```bash
-php artisan reverb:start
-php artisan schedule:work
-# 仅使用异步队列时需要：
-php artisan queue:work --queue=push-time
-```
-
-通过 HTTP 打开 `/time`，等到下一分钟，应无需刷新就新增一行时间。
-`REVERB_SERVER_HOST` / `REVERB_SERVER_PORT` 控制监听地址，
-`REVERB_HOST` / `REVERB_PORT` 控制 Laravel 发送事件的目标。
-`REVERB_CLIENT_HOST` 必须能被浏览器访问，容器环境中它可能与服务端地址不同。
-
-`npm run test:reverb` 在端口 8000 和 8080 启动独立应用及 Reverb 进程，构建
-测试资源，在 Chromium 中验证真实 WebSocket 推送和刷新后重新订阅。运行前
-应停止占用这些端口的其他进程。测试使用内存数据库和临时 Reverb 凭据。
-测试后运行 `npm run build` 恢复正常前端资源。
-
-## 测试
-
-`master` 是唯一的长期代码分支。基于它创建临时分支，直接向 `master` 提交拉取请求；
-合并后 GitHub 会自动删除临时分支。
-
-默认测试套件使用独立的 `testing` 连接和内存 SQLite 数据库，不会使用主要开发数据库。
-
-上方覆盖率徽章会在默认分支每次 CI 成功后自动更新，显示 SQLite PHPUnit
-测得的 `app/` 行覆盖率。CI 要求此源码范围内每一条可执行代码行都被覆盖。
-门禁直接比较已覆盖行数和总行数，不会因百分比四舍五入而放行；缺少覆盖率报告也会导致 CI 失败。
-
-GitHub Actions 会在拉取请求和推送到 `master` 时运行测试。每日任务安排在
-北京时间 03:46，只在默认分支 `master` 上运行。每次运行的摘要展示实测的
-测试与覆盖率结果、安装的版本，以及实际测试的数据库。
-
-```bash
-php artisan test
-./vendor/bin/pint --test
-```
-
-如需使用 MySQL 或 PostgreSQL 运行测试，请提供专用的 `TEST_DB_*` 变量。如果指定的
-测试数据库尚不存在，相应账号必须拥有创建该数据库的权限：
-
-```bash
-TEST_DB_CONNECTION=mysql \
-TEST_DB_HOST=127.0.0.1 \
-TEST_DB_PORT=3306 \
-TEST_DB_DATABASE=laravel_test \
-TEST_DB_USERNAME=root \
-TEST_DB_PASSWORD='' \
-php artisan test
-```
-
-在独立测试数据库中运行覆盖桌面与移动端浏览器的 Playwright 端到端测试：
-
-```bash
-php artisan migrate --database=testing
-php artisan db:seed --class=E2EDataSeeder --database=testing
-npm run test:e2e
-```
-
-本地快速验证可以选择浏览器项目，默认命令仍运行全部五种桌面与移动端配置：
-
-```bash
-npm run test:e2e -- --project=chromium --project="Mobile Chrome"
-```
-
-CI 按三种浏览器引擎并行运行，保留全部桌面与移动端覆盖。服务隔离和缓存边界见
-[测试隔离说明](docs/architecture.md#test-isolation-and-coverage-gate)。
-
-## 运维
-
-生产环境启用定时功能时，需要每分钟运行 Laravel 调度器。使用异步队列连接时，
-需要通过进程管理器持续运行队列 Worker；Horizon 仅适用于 Redis 队列。调度器负责
-备份、清理、访客统计汇总、Telescope 数据裁剪、GeoIP 维护和 Bing 壁纸下载。
+| 文档 | 内容 |
+| --- | --- |
+| [配置](docs/configuration.md) | 环境变量、服务和运行时选项 |
+| [运维](docs/operations.md) | 队列、调度器、日志和备份 |
+| [实时更新](docs/realtime.md) | Reverb 和 Echo |
+| [测试](docs/testing.md) | PHPUnit、覆盖率和浏览器测试 |
+| [架构](docs/architecture.md) | 功能映射和运行时契约 |
+| [代码风格](docs/code-style.md) | PHP、Filament 和前端约定 |
+| [升级](UPGRADE.md) | 版本之间需要人工操作的变更 |
+| [贡献](CONTRIBUTING.md) | 本地构建、验证和 Pull Request |
 
 ## 许可证
 
-Laravel Backend Lab 使用 [MIT 许可证](LICENSE) 开源。
+Laravel Backend Lab 基于 [MIT license](LICENSE) 开源。
 
 ## 致谢
 
-感谢 [JetBrains](https://www.jetbrains.com/) 对本项目的支持。
+感谢 [JetBrains](https://www.jetbrains.com/) 对项目的支持。
