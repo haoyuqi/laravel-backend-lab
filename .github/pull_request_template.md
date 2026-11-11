@@ -7,7 +7,8 @@ it is used as source material for automated release notes. -->
 ## Upgrade impact
 
 <!-- State runtime requirements, configuration changes, migrations, queue or schedule changes,
-and breaking changes with exact versions where relevant. Write "None" when there is no impact. -->
+and breaking changes with exact versions where relevant. Write "None" when there is no impact.
+State whether this change needs an UPGRADE.md entry; routine changes belong in the release notes. -->
 
 ## Verification
 
