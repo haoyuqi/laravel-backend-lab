@@ -1,8 +1,12 @@
 # Upgrade Guide
 
-## Upcoming release
+Only action-required or breaking changes are recorded here. Routine changes are
+described in the release notes published with each tag.
 
-This release adds a published container image. It adds no database migration.
+## v3.0.8 to v3.1.0
+
+This release adds a published container image and moves the Reverb browser
+endpoint to runtime configuration. It adds no database migration.
 
 - The image runs as uid/gid 82 and serves HTTP on port 8080. Mount a volume at
   `/var/www/html/storage` and provide `APP_KEY`, `DB_*`, `REDIS_*`, and
@@ -10,12 +14,20 @@ This release adds a published container image. It adds no database migration.
 - `VITE_REVERB_*` is no longer used. The browser-facing endpoint is rendered at
   request time from `REVERB_CLIENT_*`, defaulting to `REVERB_HOST`,
   `REVERB_PORT`, and `REVERB_SCHEME`. Remove the old variables; no asset rebuild
-  is required.
+  is required. Set `REVERB_CLIENT_HOST` when the browser reaches Reverb through a
+  different host than the application.
 - Startup never migrates, creates administrators, or replaces `APP_KEY`. Run
   `php artisan migrate --force` and `php artisan make:filament-user` explicitly.
-- Scheduled backups now send no success notifications, and a successful backup
-  no longer fails when `BACKUP_NOTIFICATION_EMAIL` is unset. Failure
+- Scheduled backups no longer send success notifications, and a successful
+  backup no longer fails when `BACKUP_NOTIFICATION_EMAIL` is unset. Failure
   notifications still require a valid recipient and mail transport.
+- Set `APP_VERSION=3.1.0` for deployments that do not use the container image.
+
+## v3.0.2 to v3.0.8
+
+No manual steps were required. These releases contained dependency updates, CI
+and documentation changes, and removal of unused configuration blocks; there
+were no database migrations. Set `APP_VERSION` to the released version.
 
 ## v3.0.1 to v3.0.2
 
