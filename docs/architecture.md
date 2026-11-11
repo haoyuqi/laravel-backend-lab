@@ -32,12 +32,35 @@ Administrative interfaces live under `/admin` using Filament 5 and Livewire 4.
 | Filament resources (visitors, blacklists, logs) | [VisitorResource](../app/Filament/Resources/VisitorResource.php), [VisitorLogResource](../app/Filament/Resources/VisitorLogResource.php), [BlackListResource](../app/Filament/Resources/BlackListResource.php), [BlackListLogResource](../app/Filament/Resources/BlackListLogResource.php), [AdminOperationLogResource](../app/Filament/Resources/AdminOperationLogResource.php) | [VisitorResourceTest](../tests/Feature/Filament/VisitorResourceTest.php), [VisitorLogResourceTest](../tests/Feature/Filament/VisitorLogResourceTest.php), [BlackListResourceTest](../tests/Feature/Filament/BlackListResourceTest.php), [BlackListLogResourceTest](../tests/Feature/Filament/BlackListLogResourceTest.php), [AdminOperationLogTest](../tests/Feature/Filament/AdminOperationLogTest.php) |
 | Transactional admin operation and auth auditing | [AdminOperationRecorder](../app/Service/AdminOperationRecorder.php), [AdminOperationObserver](../app/Observers/AdminOperationObserver.php), [AdminOperationContext](../app/Support/AdminOperationContext.php), [AdminAuthenticationContext](../app/Support/AdminAuthenticationContext.php), [RecordAdminAuthentication](../app/Listeners/RecordAdminAuthentication.php), [RecordAdminLogout](../app/Http/Middleware/RecordAdminLogout.php), [Login](../app/Filament/Auth/Login.php), [RecordsAdminActions](../app/Filament/Concerns/RecordsAdminActions.php), [CreateRecord](../app/Filament/Pages/CreateRecord.php), [EditRecord](../app/Filament/Pages/EditRecord.php), [ListRecords](../app/Filament/Pages/ListRecords.php), [config/admin-operation-logs.php](../config/admin-operation-logs.php), [AdminOperationLog](../app/Models/AdminOperationLog.php) | [AdminOperationRecorderTest](../tests/Feature/Service/AdminOperationRecorderTest.php), [AdminOperationCommitTest](../tests/Feature/Service/AdminOperationCommitTest.php), [GenericAdminOperationTest](../tests/Feature/Filament/GenericAdminOperationTest.php), [AdminAuthenticationLogTest](../tests/Feature/Filament/AdminAuthenticationLogTest.php) |
 | Scheduled maintenance and CLI commands | [PruneAdminOperationLogsCommand](../app/Console/Commands/PruneAdminOperationLogsCommand.php), [ClearFilesCommand](../app/Console/Commands/ClearFilesCommand.php), [DeleteRedisCacheCommand](../app/Console/Commands/DeleteRedisCacheCommand.php), [DownloadBingWallpaperCommand](../app/Console/Commands/DownloadBingWallpaperCommand.php), [BingWallpaper](../app/Libraries/BingWallpaper/BingWallpaper.php), [MigrateAdminUsersCommand](../app/Console/Commands/MigrateAdminUsersCommand.php) | [PruneAdminOperationLogsCommandTest](../tests/Feature/Console/PruneAdminOperationLogsCommandTest.php), [ClearFilesCommandTest](../tests/Feature/Console/ClearFilesCommandTest.php), [DeleteRedisCacheCommandTest](../tests/Feature/Console/DeleteRedisCacheCommandTest.php), [DownloadBingWallpaperCommandTest](../tests/Feature/Console/DownloadBingWallpaperCommandTest.php), [BingWallpaperTest](../tests/Feature/Libraries/BingWallpaperTest.php), [MigrateAdminUsersCommandTest](../tests/Feature/Console/MigrateAdminUsersCommandTest.php) |
+| Container image, runtime configuration, and publication | [Dockerfile](../Dockerfile), [docker/](../docker), [config/reverb.php](../config/reverb.php), [layout/index.blade.php](../resources/views/layout/index.blade.php), [index/time.blade.php](../resources/views/index/time.blade.php), [docs/container.md](../docs/container.md) | [container-smoke.sh](../.github/scripts/container-smoke.sh), [test_image_release.py](../.github/scripts/test_image_release.py), [IndexControllerTest](../tests/Feature/IndexControllerTest.php), [container admin spec](../tests/e2e/container/admin.spec.ts) |
 | Test database isolation, CI coverage gate, and release automation | [tests/TestCase.php](../tests/TestCase.php), [tests/CreatesApplication.php](../tests/CreatesApplication.php), [tests/bootstrap.php](../tests/bootstrap.php), [.github/workflows/tests.yml](../.github/workflows/tests.yml), [.github/workflows/release.yml](../.github/workflows/release.yml), [.github/scripts/ci-summary.py](../.github/scripts/ci-summary.py), [.github/scripts/release-notes.py](../.github/scripts/release-notes.py) | [TestDatabaseConnectionTest](../tests/Feature/TestDatabaseConnectionTest.php), [ConfigurationTest](../tests/Feature/ConfigurationTest.php), [.github/scripts/test_ci_summary.py](../.github/scripts/test_ci_summary.py), [.github/scripts/test_release_notes.py](../.github/scripts/test_release_notes.py) |
 
 Follow the actual source and tests when locating a feature. Update this map when
 module responsibilities or runtime paths change.
 
 ## Runtime paths and contracts
+
+### Container image and runtime Reverb configuration
+
+- The image is built in four stages (`base`, `vendor`, `assets`, `runtime`) from
+  `php:8.4-fpm-alpine` and runs as `www-data` (uid 82). nginx listens on
+  `0.0.0.0:8080` and forwards PHP to php-fpm on `127.0.0.1:9000`; supervisor
+  manages only those two programs.
+- The default command serves HTTP. `queue:work`, `schedule:work`, `horizon`, and
+  `reverb:start` reuse the same image through a command override. The entrypoint
+  only prepares writable directories and executes the command; it never
+  migrates, creates administrators, or generates `APP_KEY`.
+- `/time` renders `window.__REVERB_CLIENT__` from `config('reverb.client')` before
+  the deferred Vite bundle runs. `resources/js/echo.js` reads that object instead
+  of build-time `VITE_REVERB_*` values, so one image works with any deployment.
+  `REVERB_CLIENT_*` controls the browser endpoint and defaults to `REVERB_*`; the
+  application secret is never rendered.
+- `tests.yml` builds and boots the image on every pull request, verifies that
+  startup leaves the database and key untouched, checks authenticated admin
+  access, exercises the queue/scheduler/Horizon/Reverb entry points, and tests
+  volume persistence. `release.yml` publishes a multi-architecture index only
+  after those checks pass, then promotes moving aliases without rolling back.
+
 
 ### Health probes and middleware isolation
 

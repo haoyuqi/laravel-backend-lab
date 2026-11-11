@@ -3,15 +3,18 @@ import Pusher from 'pusher-js';
 
 window.Pusher = Pusher;
 
+// Rendered by the server so one build works with any deployment.
 // The static time page also works when broadcasting is disabled.
-if (import.meta.env.VITE_REVERB_APP_KEY) {
+const client = window.__REVERB_CLIENT__;
+
+if (client?.key) {
     window.Echo = new Echo({
         broadcaster: 'reverb',
-        key: import.meta.env.VITE_REVERB_APP_KEY,
-        wsHost: import.meta.env.VITE_REVERB_HOST,
-        wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
-        wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
-        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+        key: client.key,
+        wsHost: client.host,
+        wsPort: client.port,
+        wssPort: client.port,
+        forceTLS: client.scheme === 'https',
         enabledTransports: ['ws', 'wss'],
     });
 }

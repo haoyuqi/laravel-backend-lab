@@ -576,10 +576,108 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  container:
+    name: Container image
+    # Playwright's native dependencies are pinned to Ubuntu 24.04.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: ci-postgres
+          POSTGRES_DB: laravel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    env:
+      IMAGE: laravel-backend-lab:ci
+      APP_URL: http://127.0.0.1:8080
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: laravel
+      DB_USERNAME: root
+      DB_PASSWORD: ci-postgres
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: '6379'
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: ci-admin-password
+      VOLUME: lab-ci-storage
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Generate application key
+        run: echo "APP_KEY=base64:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          load: true
+          tags: laravel-backend-lab:ci
+          build-args: |
+            APP_VERSION=0.0.0-ci
+            VCS_REF=${{ github.sha }}
+          cache-from: type=gha,scope=container-amd64
+          cache-to: type=gha,mode=max,scope=container-amd64
+
+      - name: Verify image contents
+        run: .github/scripts/container-smoke.sh verify-image
+
+      - name: Verify startup safety
+        run: .github/scripts/container-smoke.sh verify-startup
+
+      - name: Verify runtime behavior
+        run: .github/scripts/container-smoke.sh verify-runtime
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '^24.22.1'
+          check-latest: true
+          cache: npm
+
+      - name: Prepare container browser test
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Verify authenticated admin access
+        run: npx playwright test --config=tests/e2e/playwright.container.config.ts
+        env:
+          CONTAINER_ADMIN_EMAIL: admin@example.com
+          CONTAINER_ADMIN_PASSWORD: ci-admin-password
+
+      - name: Verify persistence and graceful shutdown
+        run: .github/scripts/container-smoke.sh verify-persistence
+
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [release-script-tests, pint, production-smoke, sqlite-tests, php-tests, security-checks, browser-tests]
+    needs: [release-script-tests, pint, production-smoke, sqlite-tests, php-tests, security-checks, browser-tests, container]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     env:
@@ -617,10 +715,11 @@ jobs:
           PHP_RESULT: ${{ needs.php-tests.result }}
           SECURITY_RESULT: ${{ needs.security-checks.result }}
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
+          CONTAINER_RESULT: ${{ needs.container.result }}
         run: |
-          for result in "$SCRIPT_RESULT" "$PINT_RESULT" "$PRODUCTION_RESULT" "$SQLITE_RESULT" "$PHP_RESULT" "$SECURITY_RESULT" "$BROWSER_RESULT"; do
+          for result in "$SCRIPT_RESULT" "$PINT_RESULT" "$PRODUCTION_RESULT" "$SQLITE_RESULT" "$PHP_RESULT" "$SECURITY_RESULT" "$BROWSER_RESULT" "$CONTAINER_RESULT"; do
             if [[ "$result" != "success" ]]; then
-              echo "::error::Every CI job must succeed (scripts=$SCRIPT_RESULT, Pint=$PINT_RESULT, production=$PRODUCTION_RESULT, SQLite=$SQLITE_RESULT, PHP=$PHP_RESULT, security=$SECURITY_RESULT, browser=$BROWSER_RESULT)."
+              echo "::error::Every CI job must succeed (scripts=$SCRIPT_RESULT, Pint=$PINT_RESULT, production=$PRODUCTION_RESULT, SQLite=$SQLITE_RESULT, PHP=$PHP_RESULT, security=$SECURITY_RESULT, browser=$BROWSER_RESULT, container=$CONTAINER_RESULT)."
               exit 1
             fi
           done

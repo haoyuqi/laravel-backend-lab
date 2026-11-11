@@ -32,10 +32,6 @@ const env = {
   REVERB_SERVER_PORT: reverbPort,
   REVERB_SCALING_ENABLED: 'false',
   REDIS_DB: '15',
-  VITE_REVERB_APP_KEY: 'reverb-e2e-public-key',
-  VITE_REVERB_HOST: '127.0.0.1',
-  VITE_REVERB_PORT: reverbPort,
-  VITE_REVERB_SCHEME: 'http',
 };
 Object.assign(process.env, env);
 

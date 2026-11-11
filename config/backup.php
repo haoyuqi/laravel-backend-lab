@@ -2,11 +2,14 @@
 
 use Spatie\Backup\Notifications\Notifiable;
 use Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification;
+use Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification;
 use Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification;
 use Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification;
 use Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy;
 use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays;
 use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes;
+
+$backupNotificationsEnabled = (bool) filter_var(env('BACKUP_NOTIFICATION_EMAIL'), FILTER_VALIDATE_EMAIL);
 
 return [
 
@@ -164,13 +167,14 @@ return [
      */
     'notifications' => [
 
-        'notifications' => filter_var(env('BACKUP_NOTIFICATION_EMAIL'), FILTER_VALIDATE_EMAIL)
-            ? [
-                BackupHasFailedNotification::class => ['mail'],
-                UnhealthyBackupWasFoundNotification::class => ['mail'],
-                CleanupHasFailedNotification::class => ['mail'],
-            ]
-            : [],
+        // Every notification class must be present: the package reads this map
+        // directly when an event fires.
+        'notifications' => [
+            BackupWasSuccessfulNotification::class => [],
+            BackupHasFailedNotification::class => $backupNotificationsEnabled ? ['mail'] : [],
+            UnhealthyBackupWasFoundNotification::class => $backupNotificationsEnabled ? ['mail'] : [],
+            CleanupHasFailedNotification::class => $backupNotificationsEnabled ? ['mail'] : [],
+        ],
 
         /*
          * Here you can specify the notifiable to which the notifications should be sent.

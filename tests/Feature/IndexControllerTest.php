@@ -35,7 +35,41 @@ class IndexControllerTest extends TestCase
         $response->assertSuccessful()
             ->assertViewIs('index.time')
             ->assertSeeText('Time')
-            ->assertViewHas('init_data', [now()->toDateTimeString()]);
+            ->assertViewHas('init_data', [now()->toDateTimeString()])
+            ->assertDontSee('window.__REVERB_CLIENT__', false);
+    }
+
+    public function test_time_renders_the_runtime_reverb_client_configuration(): void
+    {
+        config()->set('reverb.client', [
+            'key' => 'test-key',
+            'host' => 'ws.example.test',
+            'port' => 8081,
+            'scheme' => 'https',
+        ]);
+
+        $this->get('/time')
+            ->assertSuccessful()
+            ->assertSee('window.__REVERB_CLIENT__', false)
+            ->assertSee('"key":"test-key"', false)
+            ->assertSee('"host":"ws.example.test"', false)
+            ->assertSee('"port":8081', false)
+            ->assertSee('"scheme":"https"', false);
+    }
+
+    public function test_time_escapes_the_runtime_reverb_client_configuration(): void
+    {
+        config()->set('reverb.client', [
+            'key' => '</script><script>alert(1)</script>',
+            'host' => 'ws.example.test',
+            'port' => 8081,
+            'scheme' => 'https',
+        ]);
+
+        $this->get('/time')
+            ->assertSuccessful()
+            ->assertDontSee('</script><script>alert(1)</script>', false)
+            ->assertSee('\u003C\/script\u003E', false);
     }
 
     public function test_test()

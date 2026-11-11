@@ -108,7 +108,7 @@ Laravel 管理的缓存、会话、队列和广播不一定要使用 Redis。但
 - `DB_*`：数据库连接；
 - `REDIS_CLIENT`、`REDIS_HOST`、`REDIS_PASSWORD` 和 `REDIS_PORT`：Redis 连接；
 - `CACHE_STORE`、`SESSION_DRIVER` 和 `QUEUE_CONNECTION`：状态与任务存储；
-- `BROADCAST_CONNECTION`、`REVERB_*` 和 `VITE_REVERB_*`：实时事件；
+- `BROADCAST_CONNECTION`、`REVERB_*` 和 `REVERB_CLIENT_*`：实时事件；
 - `MAIL_MAILER` 和 `MAIL_*`：邮件发送；
 - `FILESYSTEM_DRIVER`、`FILESYSTEM_CLOUD` 和 `AWS_*`：文件存储；
 - `TELESCOPE_ENABLED` 和 `DEBUGBAR_ENABLED`：可选的应用调试工具；
@@ -184,6 +184,15 @@ php artisan make:filament-user
 生产环境中，`ADMIN_EMAILS` 必须设置为允许访问后台的管理员邮箱列表，多个邮箱用
 英文逗号分隔。生产环境中留空会拒绝所有用户访问后台。
 
+## 容器镜像
+
+生产镜像发布在 `ghcr.io/haoyuqi/laravel-backend-lab`，支持 `linux/amd64` 和
+`linux/arm64`。镜像默认提供 HTTP 访问，也可以通过覆盖命令运行队列、调度器和
+Reverb。完整的 `X.Y.Z` 标签不可变；`X.Y`、`X` 和 `latest` 只向前移动。
+
+镜像不会在启动时生成 `APP_KEY`、执行迁移或创建管理员。配置、服务命令、持久化
+卷、健康检查、备份和 Reverb 设置见 [docs/container.md](docs/container.md)。
+
 ## 本地开发
 
 启动 Vite 开发服务器：
@@ -212,9 +221,9 @@ php artisan reverb:install
 
 设置 `BROADCAST_CONNECTION=reverb`、`REVERB_HOST=localhost`、
 `REVERB_PORT=8080`、`REVERB_SCHEME=http`，单进程保持
-`REVERB_SCALING_ENABLED=false`。`.env.example` 中的 `VITE_REVERB_*` 引用相应
-配置；不要把 `REVERB_APP_SECRET` 放进任何 `VITE_*` 变量。修改前端连接配置后
-执行 `npm run build`。
+`REVERB_SCALING_ENABLED=false`。浏览器使用 `REVERB_CLIENT_*`，由服务端在请求时
+渲染，未设置时回退到 `REVERB_*`。浏览器通过容器服务名或反向代理访问 Reverb
+时，设置 `REVERB_CLIENT_HOST`。密钥不会被渲染；修改这些值后无需重新构建前端。
 
 在不同终端运行：
 
@@ -228,7 +237,7 @@ php artisan queue:work --queue=push-time
 通过 HTTP 打开 `/time`，等到下一分钟，应无需刷新就新增一行时间。
 `REVERB_SERVER_HOST` / `REVERB_SERVER_PORT` 控制监听地址，
 `REVERB_HOST` / `REVERB_PORT` 控制 Laravel 发送事件的目标。
-`VITE_REVERB_HOST` 必须能被浏览器访问，容器环境中它可能与服务端地址不同。
+`REVERB_CLIENT_HOST` 必须能被浏览器访问，容器环境中它可能与服务端地址不同。
 
 `npm run test:reverb` 在端口 8000 和 8080 启动独立应用及 Reverb 进程，构建
 测试资源，在 Chromium 中验证真实 WebSocket 推送和刷新后重新订阅。运行前

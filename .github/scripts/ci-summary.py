@@ -109,7 +109,8 @@ def render(repo):
     else:
         jobs = [("Laravel Pint", "pint"), ("Production installation smoke", "production-smoke"),
                 ("SQLite tests", "sqlite-tests"), ("Database matrix", "php-tests"),
-                ("Security checks", "security-checks"), ("Browser tests", "browser-tests")]
+                ("Security checks", "security-checks"), ("Browser tests", "browser-tests"),
+                ("Container image", "container")]
         suites = [("SQLite", "sqlite"), ("MySQL 8.0", "mysql-8.0"),
                   ("MySQL 8.4", "mysql-8.4"), ("PostgreSQL 17", "postgres-17"),
                   ("PostgreSQL 18", "postgres-18")]
