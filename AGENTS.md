@@ -41,7 +41,8 @@ the same facts in multiple places.
 - **Privacy and redaction.** Sanitize logged request paths with
   `SafeRequestUrl::sanitize()` (no query strings or fragments). Preserve
   Telescope redaction of `_token` and Livewire `components` envelopes in all
-  environments. Never expose secrets in `VITE_*` variables or `.env` files.
+  environments. Only the public Reverb key, host, port, and scheme may be
+  rendered into page configuration; never expose secrets.
 - **Test database guard and 100% coverage.** Tests must run on the `testing`
   connection (`:memory:` SQLite or a dedicated `*_test` database). CI enforces
   100% executable line coverage across `app/` (`1377/1377` lines); cover

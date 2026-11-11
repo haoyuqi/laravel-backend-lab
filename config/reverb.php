@@ -17,6 +17,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Browser Client
+    |--------------------------------------------------------------------------
+    |
+    | These values are rendered into the page at request time so a single
+    | built image works with any deployment. The host a browser reaches is
+    | often different from the internal REVERB_HOST used by the application
+    | server, so it can be set independently with REVERB_CLIENT_*.
+    |
+    */
+
+    'client' => [
+        'key' => env('REVERB_APP_KEY'),
+        'host' => env('REVERB_CLIENT_HOST', env('REVERB_HOST', 'localhost')),
+        'port' => (int) env('REVERB_CLIENT_PORT', env('REVERB_PORT', 8080)),
+        'scheme' => env('REVERB_CLIENT_SCHEME', env('REVERB_SCHEME', 'http')),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Reverb Servers
     |--------------------------------------------------------------------------
     |

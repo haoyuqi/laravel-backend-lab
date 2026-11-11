@@ -31,7 +31,8 @@ wrappers that obscure transaction or lock boundaries.
 
 In frontend assets (`resources/js/`, `resources/sass/`), keep Vue 3 components
 focused on presentation and Echo channel lifecycle cleanup (`leaveChannel` on
-unmount). Never place secrets such as `REVERB_APP_SECRET` in `VITE_*` variables.
+unmount). Never render secrets into page configuration; only the public Reverb
+key, host, port, and scheme may be exposed to the browser.
 
 ## Tests
 
