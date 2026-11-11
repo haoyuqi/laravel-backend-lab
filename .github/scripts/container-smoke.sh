@@ -139,7 +139,8 @@ verify_runtime() {
     grep -q '"database":"healthy"' /tmp/health.json
     grep -q '"redis":"healthy"' /tmp/health.json
 
-    docker exec lab-app php artisan schedule:list | grep -q 'backup:run'
+    docker exec lab-app php artisan schedule:list > /tmp/schedule-list.txt
+    grep -q 'backup:run' /tmp/schedule-list.txt
 
     set +e
     docker exec lab-app sh -c 'timeout -s TERM 10 php artisan schedule:work' > /tmp/schedule-work.log 2>&1
