@@ -578,7 +578,8 @@ jobs:
 
   container:
     name: Container image
-    runs-on: ubuntu-26.04
+    # Playwright's native dependencies are pinned to Ubuntu 24.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     services:
