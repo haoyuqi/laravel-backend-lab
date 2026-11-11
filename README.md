@@ -82,6 +82,9 @@ allowlist denies panel access.
 
 ### With Docker
 
+Use the independent [production and development Compose setups](docs/compose.md)
+to run all application roles with bundled or external PostgreSQL/Redis services.
+
 A single image for `linux/amd64` and `linux/arm64` is published at
 [`ghcr.io/haoyuqi/laravel-backend-lab`](https://github.com/haoyuqi/laravel-backend-lab/pkgs/container/laravel-backend-lab). It serves HTTP by default and can run the
 queue worker, scheduler, and Reverb through a command override. Startup never

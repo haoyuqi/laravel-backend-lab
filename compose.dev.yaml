@@ -1,0 +1,105 @@
+name: backend-lab-dev
+
+x-application: &application
+  image: backend-lab-dev:${DEV_IMAGE_TAG:-local}
+  build:
+    context: .
+    target: development
+    args:
+      DEV_UID: ${DEV_UID:-1000}
+      DEV_GID: ${DEV_GID:-1000}
+  env_file: ${COMPOSE_ENV_FILE:-.env.compose.dev}
+  environment:
+    APP_ENV: local
+    APP_DEBUG: 'true'
+    APP_KEY: ${APP_KEY:?Set a persistent APP_KEY in .env.compose.dev}
+    LOG_CHANNEL: stderr
+  # Bind only source paths: ignored host .env and bootstrap caches stay out.
+  volumes:
+    - ./app:/var/www/html/app
+    - ./bootstrap/app.php:/var/www/html/bootstrap/app.php
+    - ./config:/var/www/html/config
+    - ./database:/var/www/html/database
+    - ./resources:/var/www/html/resources
+    - ./routes:/var/www/html/routes
+    - ./tests:/var/www/html/tests
+    - ./public:/var/www/html/public
+    - ./artisan:/var/www/html/artisan
+    - ./composer.json:/var/www/html/composer.json
+    - ./composer.lock:/var/www/html/composer.lock
+    - ./package.json:/var/www/html/package.json
+    - ./package-lock.json:/var/www/html/package-lock.json
+    - ./vite.config.js:/var/www/html/vite.config.js
+    - ./phpunit.xml:/var/www/html/phpunit.xml
+    - vendor:/var/www/html/vendor
+    - node_modules:/var/www/html/node_modules
+    - storage:/var/www/html/storage
+  init: true
+  stop_grace_period: 150s
+
+services:
+  app:
+    <<: *application
+    ports:
+      - '${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8082}:8080'
+
+  vite:
+    <<: *application
+    command: [npm, run, dev, '--', '--host=0.0.0.0', '--port=5173', '--strictPort']
+    ports:
+      - '${HTTP_BIND:-127.0.0.1}:${VITE_PORT:-5173}:5173'
+    healthcheck:
+      disable: true
+
+  worker:
+    <<: *application
+    command: [php, artisan, 'queue:work', '--queue=default,queue-test,record-visitor,black-list-log,push-time', '--sleep=1', '--tries=3', '--timeout=120']
+    healthcheck:
+      disable: true
+
+  scheduler:
+    <<: *application
+    command: [php, artisan, 'schedule:work']
+    healthcheck:
+      disable: true
+
+  reverb:
+    <<: *application
+    profiles: [realtime]
+    command: [php, artisan, 'reverb:start', '--host=0.0.0.0', '--port=8080']
+    ports:
+      - '${HTTP_BIND:-127.0.0.1}:${REVERB_PUBLIC_PORT:-8083}:8080'
+
+  database:
+    image: postgres:17-alpine
+    profiles: [database]
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-laravel}
+      POSTGRES_USER: ${DB_USERNAME:-laravel}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.compose.dev}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    profiles: [redis]
+    command: [redis-server, '--appendonly', 'yes']
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  vendor:
+  node_modules:
+  storage:
+  database:
+  redis:

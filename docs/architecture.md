@@ -5,6 +5,16 @@ administration panel, visitor analytics, IP blacklist enforcement, queued jobs,
 real-time Reverb broadcasting, scheduled maintenance, and operational health probes.
 This reference describes the behavior implemented in the current source.
 
+## Compose environments
+
+`compose.yaml` runs published production images; `compose.dev.yaml` independently
+builds a development target with source mounts, dev dependencies, and Vite.
+Both support optional local PostgreSQL and Redis profiles or external services.
+App roles share storage, not bootstrap caches; environments have separate default
+project names. Key creation and migrations are explicit. See [Compose deployment](compose.md).
+The reusable Compose CI workflow tests both environments and gates `CI result`,
+including release checks. No automatic production deployment is configured.
+
 ## Boundaries
 
 Keep HTTP controllers, middleware, console commands, and Filament pages at the

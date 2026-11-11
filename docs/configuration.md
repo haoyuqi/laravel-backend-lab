@@ -66,3 +66,11 @@ Set `LOG_CHANNEL=stderr` in containers so logs reach the container runtime. See
 
 Container deployments have additional variables, persistent paths, and health
 checks. See [container installation](container.md).
+
+Compose uses `.env.compose` for production and `.env.compose.dev` for development;
+both have tracked example templates. Pass the matching `--env-file` to every
+command. `VERSION` defaults to `latest`; `COMPOSE_PROFILES` independently enables
+bundled `database`, `redis`, and optional `realtime`. `HTTP_BIND` defaults to
+loopback. Development additionally accepts `DEV_UID`, `DEV_GID`, `VITE_PORT`, and
+`VITE_HMR_HOST`. See [Compose deployment](compose.md) for initialization and
+external database/Redis combinations. Never commit populated configuration files.

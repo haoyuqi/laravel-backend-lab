@@ -1,5 +1,9 @@
 # Operations
 
+For Compose installation, service commands, persistent volumes, and safe
+upgrades, see [Compose deployment](compose.md). Use the same environment file
+and project name for every operation on an installation.
+
 ## Background services
 
 Run each role as a separate process. The commands are identical for source and

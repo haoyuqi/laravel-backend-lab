@@ -5,7 +5,9 @@ A single production image is published at
 serves HTTP by default and can run the queue worker, scheduler, and Reverb
 through a command override.
 
-Compose deployment is tracked in issue #190 and is not included here.
+For complete service orchestration, see [Compose deployment](compose.md):
+independent development/production definitions, optional bundled dependencies,
+explicit initialization, persistence, upgrade, and rollback.
 
 ## Published images
 
@@ -78,7 +80,7 @@ must contain the administrator's email; an empty allowlist denies panel access.
 Optional settings, including cache, session, queue, mail, storage, and real-time
 values, are listed in [configuration](configuration.md).
 
-Never mount a `.env` file. Pass configuration as environment variables so
+Never mount a `.env` file into the application tree. Pass configuration as environment variables so
 secrets are not stored in an image layer or a backup archive.
 
 ## Ports and health

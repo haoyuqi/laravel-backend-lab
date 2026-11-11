@@ -60,6 +60,10 @@ Changing these values does not require rebuilding frontend assets.
 
 ## Containers
 
+The [Compose deployment](compose.md) enables the separate `reverb` service through
+the `realtime` profile. Enable broadcasting and configure the browser endpoint
+in the selected environment file before recreating all application roles.
+
 - `REVERB_HOST` and `REVERB_PORT` are the internal address the application
   server uses to publish events.
 - `REVERB_CLIENT_HOST` and `REVERB_CLIENT_PORT` are the address the browser

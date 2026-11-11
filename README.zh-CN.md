@@ -78,6 +78,9 @@ php artisan make:filament-user
 
 ### 使用 Docker
 
+提供独立的[生产与开发 Compose 配置](docs/compose.md)，可运行全部应用服务，
+并通过环境变量分别选择内置或已有的数据库、Redis。
+
 `linux/amd64` 和 `linux/arm64` 的单镜像发布在
 [`ghcr.io/haoyuqi/laravel-backend-lab`](https://github.com/haoyuqi/laravel-backend-lab/pkgs/container/laravel-backend-lab)。镜像默认提供 HTTP 访问，也可以通过覆盖
 命令运行队列、调度器和 Reverb。启动时不会生成 `APP_KEY`、执行迁移或创建
