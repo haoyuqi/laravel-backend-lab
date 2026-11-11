@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use Illuminate\Support\Env;
 use Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification;
+use Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification;
+use Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification;
+use Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification;
 use Tests\TestCase;
 
 class ConfigurationTest extends TestCase
@@ -26,7 +29,12 @@ class ConfigurationTest extends TestCase
 
     public function test_backup_notifications_are_disabled_without_an_explicit_valid_recipient(): void
     {
-        $this->assertSame([], config('backup.notifications.notifications'));
+        $this->assertSame([
+            BackupWasSuccessfulNotification::class => [],
+            BackupHasFailedNotification::class => [],
+            UnhealthyBackupWasFoundNotification::class => [],
+            CleanupHasFailedNotification::class => [],
+        ], config('backup.notifications.notifications'));
         $this->assertSame('backup-notifications-disabled@example.invalid', config('backup.notifications.mail.to'));
     }
 
@@ -47,6 +55,9 @@ class ConfigurationTest extends TestCase
             $this->assertSame('backup-ops@example.com', $backupConfig['notifications']['mail']['to']);
             $this->assertSame(['mail'], $backupConfig['notifications']['notifications'][
                 BackupHasFailedNotification::class
+            ]);
+            $this->assertSame([], $backupConfig['notifications']['notifications'][
+                BackupWasSuccessfulNotification::class
             ]);
         } finally {
             if ($previous === null) {

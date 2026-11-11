@@ -1,5 +1,22 @@
 # Upgrade Guide
 
+## Upcoming release
+
+This release adds a published container image. It adds no database migration.
+
+- The image runs as uid/gid 82 and serves HTTP on port 8080. Mount a volume at
+  `/var/www/html/storage` and provide `APP_KEY`, `DB_*`, `REDIS_*`, and
+  `ADMIN_EMAILS` as runtime environment variables. Never bake or mount `.env`.
+- `VITE_REVERB_*` is no longer used. The browser-facing endpoint is rendered at
+  request time from `REVERB_CLIENT_*`, defaulting to `REVERB_HOST`,
+  `REVERB_PORT`, and `REVERB_SCHEME`. Remove the old variables; no asset rebuild
+  is required.
+- Startup never migrates, creates administrators, or replaces `APP_KEY`. Run
+  `php artisan migrate --force` and `php artisan make:filament-user` explicitly.
+- Scheduled backups now send no success notifications, and a successful backup
+  no longer fails when `BACKUP_NOTIFICATION_EMAIL` is unset. Failure
+  notifications still require a valid recipient and mail transport.
+
 ## v3.0.1 to v3.0.2
 
 This security cleanup removes the unused `public/vendor/laravel-admin/` assets
