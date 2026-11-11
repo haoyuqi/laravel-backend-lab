@@ -83,7 +83,7 @@ allowlist denies panel access.
 ### With Docker
 
 A single image for `linux/amd64` and `linux/arm64` is published at
-`ghcr.io/haoyuqi/laravel-backend-lab`. It serves HTTP by default and can run the
+[`ghcr.io/haoyuqi/laravel-backend-lab`](https://github.com/haoyuqi/laravel-backend-lab/pkgs/container/laravel-backend-lab). It serves HTTP by default and can run the
 queue worker, scheduler, and Reverb through a command override. Startup never
 generates `APP_KEY`, migrates the database, or creates an administrator.
 

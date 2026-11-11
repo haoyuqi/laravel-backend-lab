@@ -376,6 +376,7 @@ jobs:
       - name: Append published image references
         env:
           IMAGE: ghcr.io/${{ github.repository }}
+          PACKAGE_URL: https://github.com/${{ github.repository }}/pkgs/container/${{ github.event.repository.name }}
           VERSION: ${{ needs.manifest.outputs.version }}
           IMAGE_DIGEST: ${{ needs.manifest.outputs.digest }}
           DIGEST_AMD64: ${{ needs.manifest.outputs.digest_amd64 }}
@@ -387,9 +388,16 @@ jobs:
             echo ""
             echo "| Platform | Reference |"
             echo "| --- | --- |"
-            echo "| Multi-arch | \`${IMAGE}:${VERSION}\` (\`${IMAGE_DIGEST}\`) |"
+            echo "| Multi-arch | [\`${IMAGE}:${VERSION}\`](${PACKAGE_URL}) (\`${IMAGE_DIGEST}\`) |"
             echo "| linux/amd64 | \`${IMAGE}@${DIGEST_AMD64}\` |"
             echo "| linux/arm64 | \`${IMAGE}@${DIGEST_ARM64}\` |"
+            echo ""
+            echo "**Package:** ${PACKAGE_URL}"
+            echo ""
+            echo "\`\`\`bash"
+            echo "docker pull ${IMAGE}:${VERSION}"
+            echo "docker pull ${IMAGE}:latest"
+            echo "\`\`\`"
           } >> release-notes.md
 
       - name: Create release once

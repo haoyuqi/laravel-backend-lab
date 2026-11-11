@@ -20,6 +20,9 @@ Full `X.Y.Z` tags are never rebuilt or overwritten. `X.Y`, `X`, and `latest`
 move forward only. Release notes list the multi-architecture index digest and
 both platform digests.
 
+Package page:
+<https://github.com/haoyuqi/laravel-backend-lab/pkgs/container/laravel-backend-lab>
+
 The package must be public for anonymous pulls. Make it public once after the
 first publish in the repository's package settings.
 
