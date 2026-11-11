@@ -121,7 +121,7 @@ Important environment options include:
 - `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PASSWORD`, and `REDIS_PORT` for Redis;
 - `CACHE_STORE`, `SESSION_DRIVER`, and `QUEUE_CONNECTION` for state and job
   storage;
-- `BROADCAST_CONNECTION`, `REVERB_*`, and `VITE_REVERB_*` for real-time events;
+- `BROADCAST_CONNECTION`, `REVERB_*`, and `REVERB_CLIENT_*` for real-time events;
 - `MAIL_MAILER` and `MAIL_*` for outgoing mail;
 - `FILESYSTEM_DRIVER`, `FILESYSTEM_CLOUD`, and `AWS_*` for file storage;
 - `TELESCOPE_ENABLED` and `DEBUGBAR_ENABLED` for optional inspection tools;
@@ -206,6 +206,19 @@ In production, `ADMIN_EMAILS` must contain a comma-separated allowlist of
 administrator email addresses. An empty allowlist denies all panel access in
 production.
 
+## Container images
+
+A production image is published to
+`ghcr.io/haoyuqi/laravel-backend-lab` for `linux/amd64` and `linux/arm64`. It
+serves HTTP by default and can run the queue worker, scheduler, and Reverb with
+a command override. Full `X.Y.Z` tags are immutable; `X.Y`, `X`, and `latest`
+move forward only.
+
+The image never generates `APP_KEY`, migrates the database, or creates an
+administrator on startup. See [docs/container.md](docs/container.md) for
+configuration, service commands, persistent volumes, health checks, backups,
+and Reverb setup.
+
 ## Development
 
 Run the Vite development server:
@@ -237,10 +250,12 @@ php artisan reverb:install
 
 Set `BROADCAST_CONNECTION=reverb`, `REVERB_HOST=localhost`,
 `REVERB_PORT=8080`, and `REVERB_SCHEME=http`. Keep
-`REVERB_SCALING_ENABLED=false` for a single server. The `VITE_REVERB_*`
-variables in `.env.example` mirror these values. Never put
-`REVERB_APP_SECRET` in a `VITE_*` variable. Rebuild with `npm run build`
-after changing frontend connection settings.
+`REVERB_SCALING_ENABLED=false` for a single server. The browser-facing endpoint
+is rendered at request time from `REVERB_CLIENT_*`, which defaults to the
+`REVERB_*` values. Set `REVERB_CLIENT_HOST` when the browser reaches Reverb
+through a different host, such as a container service name or a reverse proxy.
+The secret is never rendered, and no asset rebuild is required after changing
+these values.
 
 Run these commands in separate terminals:
 
@@ -254,7 +269,7 @@ php artisan queue:work --queue=push-time
 Open `/time` over HTTP and wait for the next minute: one new row should arrive
 without refreshing. `REVERB_SERVER_HOST` and `REVERB_SERVER_PORT` control the
 listening socket; `REVERB_HOST` and `REVERB_PORT` tell Laravel where to send
-events. `VITE_REVERB_HOST` must be reachable from the browser; when using
+events. `REVERB_CLIENT_HOST` must be reachable from the browser; when using
 containers it may differ from the server-side host.
 
 `npm run test:reverb` starts isolated application and Reverb processes on
