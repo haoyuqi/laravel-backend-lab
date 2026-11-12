@@ -66,3 +66,15 @@ Set `LOG_CHANNEL=stderr` in containers so logs reach the container runtime. See
 
 Container deployments have additional variables, persistent paths, and health
 checks. See [container installation](container.md).
+
+Compose uses `.env.compose` for production and `.env.compose.dev` for development;
+both have tracked example templates. Pass the matching `--env-file` to every
+command. `VERSION` defaults to `latest`. The templates set
+`COMPOSE_PROFILES=database,redis` to start bundled services. Remove either name
+to use that service externally; leave the value empty to use both externally.
+Add `realtime` to enable Reverb. Set connection addresses and credentials in
+the same file. Unset any shell-level `COMPOSE_PROFILES`, which would override
+the file. `HTTP_BIND` defaults to
+loopback. Development additionally accepts `DEV_UID`, `DEV_GID`, `VITE_PORT`, and
+`VITE_HMR_HOST`. See [Compose deployment](compose.md) for initialization and
+external database/Redis combinations. Never commit populated configuration files.

@@ -1,0 +1,73 @@
+name: backend-lab
+
+x-application: &application
+  image: ${APP_IMAGE:-ghcr.io/haoyuqi/laravel-backend-lab}:${VERSION:-latest}
+  env_file: ${COMPOSE_ENV_FILE:-.env.compose}
+  environment:
+    APP_ENV: production
+    APP_DEBUG: 'false'
+    APP_KEY: ${APP_KEY:?Set a persistent APP_KEY in .env.compose}
+    LOG_CHANNEL: stderr
+  volumes:
+    - storage:/var/www/html/storage
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 150s
+
+services:
+  app:
+    <<: *application
+    ports:
+      - '${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:8080'
+
+  background:
+    <<: *application
+    command: [supervisord, '-n', '-c', /etc/supervisor/background.conf]
+    healthcheck:
+      test: [CMD, supervisorctl, '-c', /etc/supervisor/background.conf, status]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  reverb:
+    <<: *application
+    profiles: [realtime]
+    command: [php, artisan, 'reverb:start', '--host=0.0.0.0', '--port=8080']
+    ports:
+      - '${HTTP_BIND:-127.0.0.1}:${REVERB_PUBLIC_PORT:-8081}:8080'
+
+  database:
+    image: postgres:18.6
+    profiles: [database]
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-laravel}
+      POSTGRES_USER: ${DB_USERNAME:-laravel}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.compose}
+    volumes:
+      - database:/var/lib/postgresql
+    healthcheck:
+      # initdb's temporary server accepts sockets but not TCP connections.
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    profiles: [redis]
+    command: [redis-server, '--appendonly', 'yes']
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  storage:
+  database:
+  redis:

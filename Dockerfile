@@ -96,6 +96,7 @@ COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zzz-app.conf
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/background.conf /etc/supervisor/background.conf
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN mkdir -p \
@@ -124,3 +125,24 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+
+# Local source mounts use an explicit host uid/gid and development dependencies.
+FROM runtime AS development
+
+USER root
+ARG DEV_UID=1000
+ARG DEV_GID=1000
+COPY --from=assets /usr/local/bin/node /usr/local/bin/node
+COPY --from=assets /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=assets /app/node_modules /var/www/html/node_modules
+RUN apk add --no-cache libstdc++ \
+    && ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && COMPOSER_ALLOW_SUPERUSER=1 composer install --no-scripts --prefer-dist --no-interaction \
+    && chown -R "${DEV_UID}:${DEV_GID}" storage bootstrap/cache public vendor node_modules /var/lib/nginx /var/log/nginx
+COPY docker/php-dev.ini /usr/local/etc/php/conf.d/zzz-development.ini
+ENV APP_ENV=local APP_DEBUG=true HOME=/tmp
+USER ${DEV_UID}:${DEV_GID}
+
+# Keep the default build and release artifact production-only.
+FROM runtime AS production

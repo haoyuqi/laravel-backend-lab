@@ -82,6 +82,12 @@ allowlist denies panel access.
 
 ### With Docker
 
+Use the independent [production and development Compose setups](docs/compose.md)
+to run all application roles. The default setup includes official PostgreSQL and
+Redis containers; existing services can be selected in the environment file.
+The guide covers first installation, background processes, and optional
+[Reverb WebSocket updates](docs/compose.md#optional-real-time-updates).
+
 A single image for `linux/amd64` and `linux/arm64` is published at
 [`ghcr.io/haoyuqi/laravel-backend-lab`](https://github.com/haoyuqi/laravel-backend-lab/pkgs/container/laravel-backend-lab). It serves HTTP by default and can run the
 queue worker, scheduler, and Reverb through a command override. Startup never

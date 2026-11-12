@@ -674,10 +674,13 @@ jobs:
       - name: Verify persistence and graceful shutdown
         run: .github/scripts/container-smoke.sh verify-persistence
 
+  compose:
+    uses: ./.github/workflows/compose.yml
+
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [release-script-tests, pint, production-smoke, sqlite-tests, php-tests, security-checks, browser-tests, container]
+    needs: [release-script-tests, pint, production-smoke, sqlite-tests, php-tests, security-checks, browser-tests, container, compose]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     env:
@@ -716,10 +719,11 @@ jobs:
           SECURITY_RESULT: ${{ needs.security-checks.result }}
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
           CONTAINER_RESULT: ${{ needs.container.result }}
+          COMPOSE_RESULT: ${{ needs.compose.result }}
         run: |
-          for result in "$SCRIPT_RESULT" "$PINT_RESULT" "$PRODUCTION_RESULT" "$SQLITE_RESULT" "$PHP_RESULT" "$SECURITY_RESULT" "$BROWSER_RESULT" "$CONTAINER_RESULT"; do
+          for result in "$SCRIPT_RESULT" "$PINT_RESULT" "$PRODUCTION_RESULT" "$SQLITE_RESULT" "$PHP_RESULT" "$SECURITY_RESULT" "$BROWSER_RESULT" "$CONTAINER_RESULT" "$COMPOSE_RESULT"; do
             if [[ "$result" != "success" ]]; then
-              echo "::error::Every CI job must succeed (scripts=$SCRIPT_RESULT, Pint=$PINT_RESULT, production=$PRODUCTION_RESULT, SQLite=$SQLITE_RESULT, PHP=$PHP_RESULT, security=$SECURITY_RESULT, browser=$BROWSER_RESULT, container=$CONTAINER_RESULT)."
+              echo "::error::Every CI job must succeed (scripts=$SCRIPT_RESULT, Pint=$PINT_RESULT, production=$PRODUCTION_RESULT, SQLite=$SQLITE_RESULT, PHP=$PHP_RESULT, security=$SECURITY_RESULT, browser=$BROWSER_RESULT, container=$CONTAINER_RESULT, compose=$COMPOSE_RESULT)."
               exit 1
             fi
           done

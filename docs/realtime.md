@@ -10,6 +10,11 @@ consume `push-time` or no rows arrive.
 
 ## Local setup
 
+For Docker Compose, use the [Compose startup instructions](compose.md#optional-real-time-updates)
+instead of running the following processes manually. They cover production and
+development, the `realtime` profile, browser ports, and checking all three
+required processes (scheduler and worker in `background`, plus `reverb`).
+
 Generate local Reverb credentials:
 
 ```bash
@@ -59,6 +64,10 @@ port, and scheme are rendered; `REVERB_APP_SECRET` never reaches the browser.
 Changing these values does not require rebuilding frontend assets.
 
 ## Containers
+
+The [Compose deployment](compose.md) enables the separate `reverb` service through
+the `realtime` profile. Enable broadcasting and configure the browser endpoint
+in the selected environment file before recreating all application roles.
 
 - `REVERB_HOST` and `REVERB_PORT` are the internal address the application
   server uses to publish events.

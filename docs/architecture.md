@@ -5,6 +5,16 @@ administration panel, visitor analytics, IP blacklist enforcement, queued jobs,
 real-time Reverb broadcasting, scheduled maintenance, and operational health probes.
 This reference describes the behavior implemented in the current source.
 
+## Compose environments
+
+`compose.yaml` runs published production images; `compose.dev.yaml` independently
+builds a development target with source mounts, dev dependencies, and Vite.
+Both support optional local PostgreSQL and Redis profiles or external services.
+App roles share storage, not bootstrap caches; environments have separate default
+project names. Key creation and migrations are explicit. See [Compose deployment](compose.md).
+The reusable Compose CI workflow tests both environments and gates `CI result`,
+including release checks. No automatic production deployment is configured.
+
 ## Boundaries
 
 Keep HTTP controllers, middleware, console commands, and Filament pages at the
@@ -46,6 +56,10 @@ module responsibilities or runtime paths change.
   the default web role, while `queue:work`, `schedule:work`, `horizon`, and
   `reverb:start` reuse the same image through a command override. The entrypoint
   only prepares writable directories and executes the command.
+- Compose combines `queue:work` and `schedule:work` in a single `background`
+  service using `docker/background.conf`. Supervisor restarts each process and
+  its status command checks both for container health. Run one replica to avoid
+  duplicate scheduled tasks. Reverb remains a separate optional service.
 - Startup never migrates, creates administrators, or generates or replaces
   `APP_KEY`. `storage/` is the persistent path; `bootstrap/cache` stays
   container-local.
