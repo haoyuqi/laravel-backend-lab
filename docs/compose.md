@@ -185,6 +185,9 @@ OPcache is disabled in development so HTTP requests pick up source edits.
 Restart `background` after PHP edits to reload its long-running processes. Update mounted
 dependencies explicitly with `exec app composer install` / `exec app npm ci`
 after lockfile changes; rebuilding an image does not refresh an existing volume.
+Vite ignores `vendor`, `storage`, and `bootstrap/cache` when watching files to
+avoid exhausting the host's file watcher limit. Application source still reloads;
+restart Vite after replacing vendor dependencies.
 
 Only source paths are mounted: host `.env`, dependencies, and bootstrap caches
 stay out. Development dependency volumes are populated from the development

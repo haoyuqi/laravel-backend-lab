@@ -37,6 +37,9 @@ export default defineConfig({
     },
     server: {
         host: '0.0.0.0',
+        watch: {
+            ignored: ['**/vendor/**', '**/storage/**', '**/bootstrap/cache/**'],
+        },
         hmr: {
             host: process.env.VITE_HMR_HOST || 'localhost',
             clientPort: process.env.VITE_PORT ? Number(process.env.VITE_PORT) : undefined,

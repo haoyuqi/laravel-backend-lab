@@ -127,7 +127,12 @@ dc up -d --wait app background reverb
 app_url=$(url_for app 8080)
 if [[ "$mode" == development ]]; then
   dc up -d vite
-  wait_http "$(url_for vite 5173)/@vite/client"
+  vite_url=$(url_for vite 5173)
+  wait_http "$vite_url/@vite/client"
+  curl --max-time 120 -fsS "$vite_url/resources/js/app.js" > "$scratch/vite-app-js.js"
+  curl --max-time 120 -fsS "$vite_url/resources/sass/app.scss" > "$scratch/vite-app-scss.js"
+  test -s "$scratch/vite-app-js.js"
+  test -s "$scratch/vite-app-scss.js"
 fi
 wait_http "$app_url/up"
 wait_http "$app_url/health/ready"
