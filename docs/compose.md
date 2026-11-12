@@ -47,7 +47,7 @@ It prints no secrets and preserves existing values on repeat runs. Its temporary
 config mount is outside the application tree and backups. Do not rotate `APP_KEY`
 on upgrade. Set `APP_URL` and `ADMIN_EMAILS` in `.env.compose`, and protect/back up
 this ignored file separately. Choose `VERSION=latest`, a full release such as
-`3.1.0`, or `3.1.0@sha256:<published-index-digest>` to pin the artifact.
+`3.2.0`, or `3.2.0@sha256:<published-index-digest>` to pin the artifact.
 
 Pass the same `-f` and `--env-file` to every command: they select the environment
 and connection configuration. Keep `COMPOSE_PROFILES=database,redis` for the
