@@ -18,8 +18,8 @@ database or Redis.
 | Development | `compose.dev.yaml` | `.env.compose.dev` | Source mounts and Vite, HTTP port 8082 |
 
 The default is a self-contained installation: `COMPOSE_PROFILES=database,redis`.
-Production starts five services (`app`, `worker`, `scheduler`, `database`,
-`redis`) using three image types. Development adds `vite`: six services using
+Production starts four services (`app`, `background`, `database`,
+`redis`) using three image types. Development adds `vite`: five services using
 three image types, with the application image built locally. Reverb is optional
 and adds one service using the same application image. Initialization commands
 below create temporary containers that exit afterwards.
@@ -69,10 +69,9 @@ and scheduler. Startup never migrates, seeds, creates administrators, or changes
 | Service | Role |
 | --- | --- |
 | `app` | nginx + PHP-FPM, loopback port 8080 by default |
-| `worker` | `default`, `queue-test`, `record-visitor`, `black-list-log`, `push-time` queues |
-| `scheduler` | One scheduler; do not scale this service |
+| `background` | Supervisor runs one queue worker and one scheduler; do not scale this service |
 | `reverb` | Optional real-time server, profile `realtime` |
-| `database` | Official PostgreSQL 17, profile `database` |
+| `database` | Official PostgreSQL 18.6, profile `database` |
 | `redis` | Official Redis 7 with append-only persistence, profile `redis` |
 
 Dependencies have no published ports. Restrict the private network to trusted
@@ -90,8 +89,8 @@ Use your existing production TLS proxy and configure trusted proxies explicitly.
 
 The final startup command stays the same in all cases:
 `docker compose -f compose.yaml --env-file .env.compose up -d`.
-With only one bundled dependency production starts four services using two
-image types; with neither it starts three services using one image type.
+With only one bundled dependency production starts three services using two
+image types; with neither it starts two services using one image type.
 Development adds Vite to each count. Reverb adds one service when enabled.
 
 Set hostname, port, database, credentials, and TLS settings. `localhost` means
@@ -182,7 +181,8 @@ docker compose --env-file .env.compose.dev -f compose.dev.yaml up -d
 
 Open `http://localhost:8082`. Vite defaults to port 5173; `VITE_PORT` sets the
 published/browser port and `VITE_HMR_HOST` sets the browser-reachable host.
-PHP checks source timestamps. Restart the worker after PHP edits. Update mounted
+OPcache is disabled in development so HTTP requests pick up source edits.
+Restart `background` after PHP edits to reload its long-running processes. Update mounted
 dependencies explicitly with `exec app composer install` / `exec app npm ci`
 after lockfile changes; rebuilding an image does not refresh an existing volume.
 
@@ -227,19 +227,20 @@ Apply the configuration to **all** application roles, not just Reverb:
 # Production
 docker compose -f compose.yaml --env-file .env.compose up -d
 docker compose -f compose.yaml --env-file .env.compose ps
-docker compose -f compose.yaml --env-file .env.compose logs --tail=50 reverb worker scheduler
+docker compose -f compose.yaml --env-file .env.compose logs --tail=50 reverb background
 
 # Development (use this instead of the production commands)
 docker compose -f compose.dev.yaml --env-file .env.compose.dev up -d
 docker compose -f compose.dev.yaml --env-file .env.compose.dev ps
-docker compose -f compose.dev.yaml --env-file .env.compose.dev logs --tail=50 reverb worker scheduler
+docker compose -f compose.dev.yaml --env-file .env.compose.dev logs --tail=50 reverb background
 ```
 
 Open `http://localhost:8080/time` in production or
 `http://localhost:8082/time` in development and wait for the next minute.
 The scheduler dispatches the event, the worker consumes the `push-time` queue,
-and Reverb delivers it to the browser; all three services must run. Compose
-already starts the worker and scheduler, so do not start duplicate Artisan
+and Reverb delivers it to the browser. The worker and scheduler both run in
+`background`, while `reverb` is a separate service. Compose
+already starts both background processes, so do not start duplicate Artisan
 processes manually. No frontend rebuild is required.
 HTTPS proxies must forward WebSocket upgrade headers and publishing routes.
 See [real-time updates](realtime.md), including origin restrictions.
@@ -255,10 +256,11 @@ matching Compose and environment files for every operation; production examples:
 
 ```bash
 docker compose -f compose.yaml --env-file .env.compose ps
-docker compose -f compose.yaml --env-file .env.compose logs --tail=50 app worker scheduler
+docker compose -f compose.yaml --env-file .env.compose logs --tail=50 app background
+docker compose -f compose.yaml --env-file .env.compose exec background supervisorctl -c /etc/supervisor/background.conf status
 # After editing PHP source in development, restart the long-running worker
 # using compose.dev.yaml and .env.compose.dev instead.
-docker compose -f compose.yaml --env-file .env.compose restart worker
+docker compose -f compose.yaml --env-file .env.compose restart background
 # Stop this installation without deleting its persistent volumes.
 docker compose -f compose.yaml --env-file .env.compose down
 ```
@@ -268,20 +270,34 @@ docker compose -f compose.yaml --env-file .env.compose down
 deleting this installation's stored data. After switching to external services,
 explicitly stop previously bundled containers; keep their volumes for recovery.
 
+The background worker consumes `default`, `queue-test`, `record-visitor`,
+`black-list-log`, and `push-time`. Supervisor restarts either background process
+when it exits, and the container healthcheck requires both to be running.
+Keep one `background` replica so scheduled tasks are not duplicated. If queue
+capacity later requires independent scaling, separate the worker from the
+scheduler again.
+
+When upgrading an earlier Compose installation that had separate `worker` and
+`scheduler` services, stop and remove **those two containers** using the old
+Compose file before starting `background`. Do not leave the old scheduler
+running, and retain the storage and dependency volumes. Use an application image
+built from this revision or a later release: earlier images do not contain
+`/etc/supervisor/background.conf`.
+
 ## Operation, upgrade, and rollback
 
 - Use `ps` and `logs` for process status. Do not disclose personal data from logs.
   `/up` checks liveness; `/health/ready` reports dependencies. Redis failure is
   degraded with HTTP 200: inspect the response, not just the status code.
-- Non-HTTP worker/scheduler roles have the inherited HTTP healthcheck disabled.
-  Monitor queue progress and actual scheduled executions. Production roles
+- The combined background role replaces the HTTP healthcheck with a Supervisor
+  process check. Also monitor queue progress and actual scheduled executions. Production roles
   restart unless stopped; workers get 150 seconds to stop (job timeout: 120).
 - Shared application storage retains uploads, cache/sessions, and backups;
   database and Redis have separate volumes. Never share `bootstrap/cache`.
   If using configuration caches, rebuild them explicitly in each app role.
 - Read [UPGRADE.md](../UPGRADE.md), back up database/storage, retain the old
   digest/configuration, and pull the new `VERSION` before maintenance.
-- Stop worker, scheduler, and optional Reverb before migration. Maintenance
+- Stop `background` and optional Reverb before migration. Maintenance
   mode alone does not stop writers. Execute `run --rm app php artisan migrate
   --force` using the new version; recreate app roles, verify behavior, then reopen
   traffic. Preserve keys and volumes; do not recreate dependencies unnecessarily.
@@ -292,9 +308,15 @@ explicitly stop previously bundled containers; keep their volumes for recovery.
   Database major upgrades are separate backup/restore operations.
 
 See [operations](operations.md) for current backup limitations and off-host
-restore drills. Local archives alone are not disaster recovery. PostgreSQL 17
-is the tested baseline; verify `pg_dump`/`mysqldump` compatibility and rehearse a
+restore drills. Local archives alone are not disaster recovery. PostgreSQL 18.6
+is the Compose baseline; verify `pg_dump`/`mysqldump` compatibility and rehearse a
 dump/restore before using newer external database majors. Backup redesign is #198.
+
+PostgreSQL 18 mounts its volume at `/var/lib/postgresql` (the image's default
+data directory is version-specific underneath it). An existing PostgreSQL 17
+volume cannot be upgraded by changing the image tag or mount path. Keep the old
+volume, dump with a compatible client, restore into a new PostgreSQL 18 volume,
+and verify the restored data before switching the application connection.
 
 ## Verification
 

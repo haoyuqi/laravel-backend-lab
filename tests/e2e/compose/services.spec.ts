@@ -13,11 +13,14 @@ test('compose supports authenticated admin access and real-time queue delivery',
     return (window as any).Echo?.connector.pusher.channel('push-time')?.subscribed === true;
   });
   const before = await page.locator('table tbody tr').count();
+  // No manual dispatch: the real scheduler must publish through the queue.
+  await expect.poll(() => page.locator('table tbody tr').count(), { timeout: 80_000 }).toBeGreaterThan(before);
+  const afterScheduledEvent = await page.locator('table tbody tr').count();
   execFileSync('docker', [
     'compose', '--env-file', process.env.COMPOSE_SMOKE_ENV!,
     '-f', process.env.COMPOSE_SMOKE_FILE!, '-p', process.env.COMPOSE_SMOKE_PROJECT!,
     'exec', '-T', 'app', 'php', 'artisan', 'tinker',
     '--execute=event(new App\\Events\\PushTimeEvent);',
   ], { stdio: 'pipe', env: process.env });
-  await expect.poll(() => page.locator('table tbody tr').count(), { timeout: 20_000 }).toBeGreaterThan(before);
+  await expect.poll(() => page.locator('table tbody tr').count(), { timeout: 20_000 }).toBeGreaterThan(afterScheduledEvent);
 });

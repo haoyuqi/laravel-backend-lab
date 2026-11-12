@@ -56,6 +56,10 @@ module responsibilities or runtime paths change.
   the default web role, while `queue:work`, `schedule:work`, `horizon`, and
   `reverb:start` reuse the same image through a command override. The entrypoint
   only prepares writable directories and executes the command.
+- Compose combines `queue:work` and `schedule:work` in a single `background`
+  service using `docker/background.conf`. Supervisor restarts each process and
+  its status command checks both for container health. Run one replica to avoid
+  duplicate scheduled tasks. Reverb remains a separate optional service.
 - Startup never migrates, creates administrators, or generates or replaces
   `APP_KEY`. `storage/` is the persistent path; `bootstrap/cache` stays
   container-local.

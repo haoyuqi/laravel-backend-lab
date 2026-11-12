@@ -23,8 +23,11 @@ php artisan schedule:work
 php artisan reverb:start --host=0.0.0.0 --port=8080
 ```
 
-Keep workers under a process supervisor. In containers, run each role as its own
-container with the same image and a command override. Disable the inherited HTTP
+Keep workers under a process supervisor. Compose combines the worker and
+scheduler in one `background` container managed by Supervisor, with a healthcheck
+that checks both processes. Keep one replica to avoid duplicate schedulers;
+see [Compose deployment](compose.md#background-services-and-status) for commands.
+Standalone roles can still use the same image with a command override. Disable the inherited HTTP
 healthcheck for queue, scheduler, and Horizon containers; a Reverb container can
 keep it only when Reverb listens on port 8080.
 

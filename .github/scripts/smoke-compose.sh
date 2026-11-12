@@ -28,7 +28,7 @@ fi
 # Avoid modifying the checkout's hot file, generated assets, or local secrets.
 mkdir "$scratch/source"
 (cd "$root" && git ls-files -z | tar --null -T - -cf -) | tar -xf - -C "$scratch/source"
-for path in compose.yaml compose.dev.yaml .env.compose.example .env.compose.dev.example docker/php-dev.ini; do
+for path in compose.yaml compose.dev.yaml .env.compose.example .env.compose.dev.example docker/php-dev.ini docker/background.conf; do
   cp "$root/$path" "$scratch/source/$path"
 done
 cd "$scratch/source"
@@ -123,7 +123,7 @@ if [[ "$mode" == development ]]; then
   run php artisan storage:link >/dev/null
 fi
 run php artisan tinker --execute='file_put_contents(storage_path("app/public/compose-sentinel.txt"), "preserved");' >/dev/null
-dc up -d app worker scheduler reverb
+dc up -d --wait app background reverb
 app_url=$(url_for app 8080)
 if [[ "$mode" == development ]]; then
   dc up -d vite
@@ -139,16 +139,68 @@ for _ in $(seq 1 30); do
   sleep 2
 done
 test "$(run php artisan tinker --execute='echo Cache::get("key:0") === "value:0" ? "processed" : "missing";' | tail -1)" = processed
-dc exec -T scheduler php artisan schedule:list >/dev/null
+dc exec -T background php artisan schedule:list >/dev/null
+# Both processes must be supervised and restart independently after a crash.
+dc exec -T background supervisorctl -c /etc/supervisor/background.conf status
+for process in worker scheduler; do
+  previous_pid=$(dc exec -T background supervisorctl -c /etc/supervisor/background.conf pid "$process")
+  dc exec -T background kill -KILL "$previous_pid"
+  recovered=false
+  for _ in $(seq 1 20); do
+    current_pid=$(dc exec -T background supervisorctl -c /etc/supervisor/background.conf pid "$process")
+    if [[ "$current_pid" != 0 && "$current_pid" != "$previous_pid" ]] && \
+      dc exec -T background supervisorctl -c /etc/supervisor/background.conf status "$process" >/dev/null; then
+      recovered=true
+      break
+    fi
+    sleep 1
+  done
+  test "$recovered" = true
+done
+# Prove the scheduler actually dispatches at the next minute, rather than only
+# checking its process or task list. Pausing the worker makes the queued event
+# observable; restoring it must drain the queue again.
+dc exec -T background supervisorctl -c /etc/supervisor/background.conf stop worker >/dev/null
+queue_size() {
+  dc exec -T background php artisan tinker --execute='echo Queue::size("push-time");' | tail -1
+}
+initial_size=$(queue_size)
+scheduled=false
+for _ in $(seq 1 40); do
+  if [[ $(queue_size) -gt "$initial_size" ]]; then
+    scheduled=true
+    break
+  fi
+  sleep 2
+done
+test "$scheduled" = true
+dc exec -T background supervisorctl -c /etc/supervisor/background.conf start worker >/dev/null
+for _ in $(seq 1 20); do
+  if [[ $(queue_size) == 0 ]]; then break; fi
+  sleep 1
+done
+test "$(queue_size)" = 0
+echo "Compose $mode: scheduled dispatch and queue consumption passed."
 wait_http "$(url_for reverb 8080)/up"
 dc exec -T reverb php artisan tinker --execute='event(new App\Events\PushTimeEvent);' >/dev/null
 
 if [[ "$mode" == development ]]; then
-  dc exec -T app php -r 'exit(ini_get("opcache.validate_timestamps") === "1" ? 0 : 1);'
+  dc exec -T app php -r 'exit(ini_get("opcache.enable") === "0" ? 0 : 1);' || {
+    echo 'Development OPcache must be disabled.' >&2; exit 1;
+  }
   # Verify source edits are visible without rebuilding and dev dependencies exist.
-  printf '\n<!-- compose-source-sentinel -->\n' >> resources/views/index/welcome.blade.php
-  curl -fsS "$app_url/" | grep -q compose-source-sentinel
-  dc exec -T app test -f vendor/phpunit/phpunit/phpunit
+  sed -i.bak 's/<div id="app">/<div id="app" data-compose-source-sentinel="visible">/' resources/views/index/welcome.blade.php
+  curl -fsS "$app_url/" > "$scratch/source-response.html"
+  grep -q compose-source-sentinel "$scratch/source-response.html" || {
+    echo 'Development source edit is not visible in the HTTP response.' >&2
+    dc exec -T app php -r 'echo "Mounted template has edit: ", str_contains(file_get_contents("resources/views/index/welcome.blade.php"), "compose-source-sentinel") ? "yes" : "no", PHP_EOL;'
+    curl -s -o /dev/null -w 'Homepage HTTP status: %{http_code}\n' "$app_url/"
+    dc exec -T app php artisan tinker --execute='echo "Rendered template has edit: ", str_contains(view("index.welcome", ["info" => "check"])->render(), "compose-source-sentinel") ? "yes" : "no";'
+    exit 1
+  }
+  dc exec -T app test -f vendor/phpunit/phpunit/phpunit || {
+    echo 'Development dependencies are missing.' >&2; exit 1;
+  }
 else
   dc exec -T app test ! -f vendor/phpunit/phpunit/phpunit
 fi

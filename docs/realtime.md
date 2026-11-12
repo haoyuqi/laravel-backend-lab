@@ -13,7 +13,7 @@ consume `push-time` or no rows arrive.
 For Docker Compose, use the [Compose startup instructions](compose.md#optional-real-time-updates)
 instead of running the following processes manually. They cover production and
 development, the `realtime` profile, browser ports, and checking all three
-required services (`scheduler`, `worker`, `reverb`).
+required processes (scheduler and worker in `background`, plus `reverb`).
 
 Generate local Reverb credentials:
 

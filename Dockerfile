@@ -96,6 +96,7 @@ COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zzz-app.conf
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/background.conf /etc/supervisor/background.conf
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN mkdir -p \
