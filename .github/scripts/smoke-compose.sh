@@ -10,7 +10,8 @@ scratch=$(mktemp -d "${TMPDIR:-/tmp}/backend-lab-compose.XXXXXXXX")
 project="lab-compose-${mode}-$(date +%s)-$$"
 dependencies="${project}-external"
 export COMPOSE_ENV_FILE="$scratch/runtime.env"
-export COMPOSE_PROFILES=database,redis,realtime
+unset COMPOSE_PROFILES
+profile_flags=(--profile database --profile redis --profile realtime)
 export APP_KEY="base64:$(openssl rand -base64 32 | tr -d '\n')"
 export DB_PASSWORD="$(openssl rand -hex 24)"
 export DEV_UID="$(id -u)" DEV_GID="$(id -g)"
@@ -38,6 +39,7 @@ if [[ "$mode" == development ]]; then
   template=.env.compose.dev.example
 fi
 sed -e "s|^APP_KEY=.*|APP_KEY=$APP_KEY|" \
+    -e '/^COMPOSE_PROFILES=/d' \
     -e "s|^DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" \
     -e "s|^APP_URL=.*|APP_URL=http://127.0.0.1:$HTTP_PORT|" \
     -e "s|^VITE_PORT=.*|VITE_PORT=$VITE_PORT|" \
@@ -50,8 +52,8 @@ sed -e "s|^APP_KEY=.*|APP_KEY=$APP_KEY|" \
     "$template" > "$COMPOSE_ENV_FILE"
 chmod 600 "$COMPOSE_ENV_FILE"
 
-dc() { docker compose --env-file "$COMPOSE_ENV_FILE" -f "$file" -p "$project" "$@"; }
-ext() { docker compose --env-file "$COMPOSE_ENV_FILE" -f "$file" -p "$dependencies" "$@"; }
+dc() { docker compose --env-file "$COMPOSE_ENV_FILE" -f "$file" -p "$project" ${profile_flags[@]+"${profile_flags[@]}"} "$@"; }
+ext() { docker compose --env-file "$COMPOSE_ENV_FILE" -f "$file" -p "$dependencies" --profile database --profile redis "$@"; }
 cleanup() {
   local result=$?
   trap - EXIT
@@ -81,9 +83,17 @@ wait_http() {
 url_for() { printf 'http://%s' "$(dc port "$1" "$2" | head -1)"; }
 
 # Parse each profile combination without printing resolved credentials.
-for profiles in '' database redis database,redis database,redis,realtime; do
-  COMPOSE_PROFILES="$profiles" dc config --quiet
+for selection in external database redis bundled realtime; do
+  profile_flags=()
+  case "$selection" in
+    database) profile_flags=(--profile database) ;;
+    redis) profile_flags=(--profile redis) ;;
+    bundled) profile_flags=(--profile database --profile redis) ;;
+    realtime) profile_flags=(--profile database --profile redis --profile realtime) ;;
+  esac
+  dc config --quiet
 done
+profile_flags=(--profile database --profile redis --profile realtime)
 if [[ "$mode" == development ]]; then
   dc build app
   test_image="backend-lab-dev:$DEV_IMAGE_TAG"
@@ -165,17 +175,17 @@ dc create app >/dev/null
 docker network connect --alias external-database "${project}_default" "$(ext ps -q database)"
 docker network connect --alias external-redis "${project}_default" "$(ext ps -q redis)"
 for combination in external local-database local-redis; do
-  export COMPOSE_PROFILES=
+  profile_flags=()
   database_host=external-database
   redis_host=external-redis
   case "$combination" in
     local-database)
-      export COMPOSE_PROFILES=database
+      profile_flags=(--profile database)
       database_host=database
       dc up -d --wait database
       ;;
     local-redis)
-      export COMPOSE_PROFILES=redis
+      profile_flags=(--profile redis)
       redis_host=redis
       dc up -d --wait redis
       ;;

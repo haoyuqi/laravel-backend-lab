@@ -6,6 +6,30 @@ definitions, not base/override files. Both support bundled official PostgreSQL
 and Redis or existing external services. Production uses the [published image](container.md);
 development builds a separate target with source mounts, dev dependencies, and Vite.
 
+## Choose how to run
+
+Choose production or development first, then configure dependencies in that
+environment's file. You do not need to edit the Compose YAML to use an existing
+database or Redis.
+
+| Mode | Compose file | Environment file | Application |
+| --- | --- | --- | --- |
+| Production | `compose.yaml` | `.env.compose` | Published image, HTTP port 8080 |
+| Development | `compose.dev.yaml` | `.env.compose.dev` | Source mounts and Vite, HTTP port 8082 |
+
+The default is a self-contained installation: `COMPOSE_PROFILES=database,redis`.
+Production starts five services (`app`, `worker`, `scheduler`, `database`,
+`redis`) using three image types. Development adds `vite`: six services using
+three image types, with the application image built locally. Reverb is optional
+and adds one service using the same application image. Initialization commands
+below create temporary containers that exit afterwards.
+
+Bundled database and Redis ports are not published to the host. They do not
+occupy the host's 5432/6379 ports or use an existing database's data directory;
+each uses a project-specific named volume. They can coexist with host services.
+Connecting the application to an existing database, however, makes migrations
+and business operations affect that database: use a dedicated database/account.
+
 ## First installation: production
 
 From a checkout of the desired release:
@@ -25,15 +49,18 @@ on upgrade. Set `APP_URL` and `ADMIN_EMAILS` in `.env.compose`, and protect/back
 this ignored file separately. Choose `VERSION=latest`, a full release such as
 `3.1.0`, or `3.1.0@sha256:<published-index-digest>` to pin the artifact.
 
-Pass the same `--env-file` to **every** command: it controls both interpolation
-and runtime variables. Compose `env_file` does not mount Laravel's `.env`.
+Pass the same `-f` and `--env-file` to every command: they select the environment
+and connection configuration. Keep `COMPOSE_PROFILES=database,redis` for the
+default installation. Unset any shell-level `COMPOSE_PROFILES`, which takes
+precedence over the file. Compose `env_file` passes
+variables into containers; it does not mount Laravel's `.env`.
 
 ```bash
-docker compose --env-file .env.compose pull
-docker compose --env-file .env.compose up -d --wait database redis
-docker compose --env-file .env.compose run --rm app php artisan migrate --force
-docker compose --env-file .env.compose run --rm app php artisan make:filament-user
-docker compose --env-file .env.compose up -d
+docker compose -f compose.yaml --env-file .env.compose pull
+docker compose -f compose.yaml --env-file .env.compose up -d --wait database redis
+docker compose -f compose.yaml --env-file .env.compose run --rm app php artisan migrate --force
+docker compose -f compose.yaml --env-file .env.compose run --rm app php artisan make:filament-user
+docker compose -f compose.yaml --env-file .env.compose up -d
 ```
 
 Use an email from `ADMIN_EMAILS`. Prepare the schema before starting workers
@@ -54,17 +81,68 @@ Use your existing production TLS proxy and configure trusted proxies explicitly.
 
 ## Existing database and/or Redis
 
-| Dependency source | `COMPOSE_PROFILES` | Connection configuration |
+| Dependency source | `COMPOSE_PROFILES` in the environment file | Connection configuration |
 | --- | --- | --- |
-| Both bundled | `database,redis` | `DB_HOST=database`, `REDIS_HOST=redis` |
+| Both bundled (default) | `database,redis` | `DB_HOST=database`, `REDIS_HOST=redis` |
 | Existing database | `redis` | External `DB_*`, `REDIS_HOST=redis` |
 | Existing Redis | `database` | `DB_HOST=database`, external `REDIS_*` |
-| Both existing | empty | External `DB_*` and `REDIS_*` |
+| Both existing | Empty: `COMPOSE_PROFILES=` | External `DB_*` and `REDIS_*` |
+
+The final startup command stays the same in all cases:
+`docker compose -f compose.yaml --env-file .env.compose up -d`.
+With only one bundled dependency production starts four services using two
+image types; with neither it starts three services using one image type.
+Development adds Vite to each count. Reverb adds one service when enabled.
 
 Set hostname, port, database, credentials, and TLS settings. `localhost` means
 the application container. Existing MySQL works with `DB_CONNECTION=mysql` and
-matching settings; disable the PostgreSQL profile. Shell variables override the
-file, so clear any inherited `COMPOSE_PROFILES` when changing modes.
+matching settings; remove `database` from `COMPOSE_PROFILES` in that case. Unset any inherited
+`COMPOSE_PROFILES` shell variable so the selected environment file takes effect.
+
+For example, to use an existing PostgreSQL server and Redis, edit the production
+environment file before initialization. Use a database/account dedicated to this
+application; do not point migrations at another application's business tables:
+
+```dotenv
+COMPOSE_PROFILES=
+DB_CONNECTION=pgsql
+DB_HOST=db.example.internal
+DB_PORT=5432
+DB_DATABASE=backend_lab
+DB_USERNAME=backend_lab
+DB_PASSWORD=<existing database password>
+REDIS_HOST=redis.example.internal
+REDIS_PORT=6379
+REDIS_PASSWORD=<existing Redis password, or null if authentication is disabled>
+```
+
+The addresses must be reachable from containers. The provider must create the
+database and grant this account the permissions needed for application migrations.
+Preserve the existing credentials when running the key-initialization helper.
+After preparing the application key and administrator allowlist:
+
+```bash
+# No database or Redis container will be started.
+docker compose -f compose.yaml --env-file .env.compose pull
+docker compose -f compose.yaml --env-file .env.compose run --rm app php artisan migrate --force
+docker compose -f compose.yaml --env-file .env.compose run --rm app php artisan make:filament-user
+docker compose -f compose.yaml --env-file .env.compose up -d
+```
+
+If Redis is not already available, set `COMPOSE_PROFILES=redis` and keep
+`REDIS_HOST=redis` from the template. Before migration, run
+`docker compose -f compose.yaml --env-file .env.compose up -d --wait redis`.
+If only the database is bundled, use `COMPOSE_PROFILES=database` and prepare it
+with `up -d --wait database`. Do not run `up ... database` for an external-only
+installation: explicitly naming a service starts it even if its profile is off.
+The same choices apply to the development file.
+
+For a database running directly on Docker Desktop's host, use
+`DB_HOST=host.docker.internal`, not `localhost`. On Linux, configure a reachable
+host address or a host-gateway mapping. A database in another Compose project
+needs a reachable endpoint or an explicitly shared Docker network; its service
+name alone will not resolve across isolated project networks. Check database
+listening addresses, account permissions, and firewall rules as needed.
 
 On an existing Redis instance, allocate dedicated database indexes for this
 installation and use a unique `REDIS_PREFIX`/`CACHE_PREFIX`. Prefixes alone
@@ -122,13 +200,73 @@ connection, never a development business database. Laradock remains supported.
 
 ## Optional real-time updates
 
-Set `BROADCAST_CONNECTION=reverb` and append `realtime` to `COMPOSE_PROFILES`.
-Keep the initialized Reverb keys. All app roles need the same settings.
-Internally use `REVERB_HOST=reverb`, port 8080. Set `REVERB_CLIENT_*` to the
-browser-reachable address (loopback 8081 in production or 8083 in development).
-Run `up -d` to apply changes to all roles. No frontend rebuild is required.
+For live updates on `/time`, edit the selected environment file. For the default
+production installation:
+
+```dotenv
+COMPOSE_PROFILES=database,redis,realtime
+BROADCAST_CONNECTION=reverb
+REVERB_HOST=reverb
+REVERB_PORT=8080
+REVERB_SCHEME=http
+REVERB_CLIENT_HOST=localhost
+REVERB_CLIENT_PORT=8081
+REVERB_CLIENT_SCHEME=http
+```
+
+Keep the Reverb keys created by the initialization helper. If dependencies are
+external, retain your chosen profiles and add only `realtime` (for example,
+`COMPOSE_PROFILES=realtime` when both are external). In development the browser
+port is 8083 instead of 8081. For remote browsers replace `localhost` with a
+browser-reachable hostname; the default loopback binding is for local access or
+a proxy on the same host.
+
+Apply the configuration to **all** application roles, not just Reverb:
+
+```bash
+# Production
+docker compose -f compose.yaml --env-file .env.compose up -d
+docker compose -f compose.yaml --env-file .env.compose ps
+docker compose -f compose.yaml --env-file .env.compose logs --tail=50 reverb worker scheduler
+
+# Development (use this instead of the production commands)
+docker compose -f compose.dev.yaml --env-file .env.compose.dev up -d
+docker compose -f compose.dev.yaml --env-file .env.compose.dev ps
+docker compose -f compose.dev.yaml --env-file .env.compose.dev logs --tail=50 reverb worker scheduler
+```
+
+Open `http://localhost:8080/time` in production or
+`http://localhost:8082/time` in development and wait for the next minute.
+The scheduler dispatches the event, the worker consumes the `push-time` queue,
+and Reverb delivers it to the browser; all three services must run. Compose
+already starts the worker and scheduler, so do not start duplicate Artisan
+processes manually. No frontend rebuild is required.
 HTTPS proxies must forward WebSocket upgrade headers and publishing routes.
 See [real-time updates](realtime.md), including origin restrictions.
+
+To disable live updates, set `BROADCAST_CONNECTION=log`, remove `realtime` from
+`COMPOSE_PROFILES`, explicitly stop `reverb`, then run `up -d` again. Removing
+the profile alone does not stop an already-running server.
+
+## Background services and status
+
+The normal `up -d` starts the queue worker and scheduler automatically. Use the
+matching Compose and environment files for every operation; production examples:
+
+```bash
+docker compose -f compose.yaml --env-file .env.compose ps
+docker compose -f compose.yaml --env-file .env.compose logs --tail=50 app worker scheduler
+# After editing PHP source in development, restart the long-running worker
+# using compose.dev.yaml and .env.compose.dev instead.
+docker compose -f compose.yaml --env-file .env.compose restart worker
+# Stop this installation without deleting its persistent volumes.
+docker compose -f compose.yaml --env-file .env.compose down
+```
+
+`restart` does not apply changed environment settings or image versions; use
+`up -d` for those changes. Do not run `down --volumes` unless deliberately
+deleting this installation's stored data. After switching to external services,
+explicitly stop previously bundled containers; keep their volumes for recovery.
 
 ## Operation, upgrade, and rollback
 

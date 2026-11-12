@@ -10,6 +10,11 @@ consume `push-time` or no rows arrive.
 
 ## Local setup
 
+For Docker Compose, use the [Compose startup instructions](compose.md#optional-real-time-updates)
+instead of running the following processes manually. They cover production and
+development, the `realtime` profile, browser ports, and checking all three
+required services (`scheduler`, `worker`, `reverb`).
+
 Generate local Reverb credentials:
 
 ```bash
