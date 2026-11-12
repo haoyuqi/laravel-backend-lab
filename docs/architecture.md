@@ -56,10 +56,12 @@ module responsibilities or runtime paths change.
   the default web role, while `queue:work`, `schedule:work`, `horizon`, and
   `reverb:start` reuse the same image through a command override. The entrypoint
   only prepares writable directories and executes the command.
-- Compose combines `queue:work` and `schedule:work` in a single `background`
-  service using `docker/background.conf`. Supervisor restarts each process and
-  its status command checks both for container health. Run one replica to avoid
-  duplicate scheduled tasks. Reverb remains a separate optional service.
+- Compose combines two `queue:work` processes and `schedule:work` in a single
+  `background` service using `docker/background.conf`: one worker handles
+  `default`, `queue-test`, `black-list-log`, and `push-time`, while the analytics
+  worker handles `record-visitor`. Supervisor restarts each process and its
+  status command checks all of them for container health. Run one replica to
+  avoid duplicate scheduled tasks. Reverb remains a separate optional service.
 - Startup never migrates, creates administrators, or generates or replaces
   `APP_KEY`. `storage/` is the persistent path; `bootstrap/cache` stays
   container-local.
@@ -128,6 +130,10 @@ module responsibilities or runtime paths change.
   rejects the pair if either incoming count is lower than the persisted value,
   and atomically upserts both rows in one database transaction before re-applying
   the fixed Redis expiration deadline.
+- `visitor-data:prune` (scheduled daily at `00:15`) hard-deletes `visitor_logs`
+  older than `VISITOR_RETENTION_DAYS` and visitors whose remaining logs are all
+  expired, in bounded batches. `queue:prune-failed --hours=168` (daily at
+  `00:25`) bounds failed-job payload retention.
 
 ### Transactional admin operation and authentication logs
 

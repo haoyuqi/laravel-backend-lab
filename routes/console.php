@@ -22,6 +22,8 @@ Schedule::command('backup:monitor')->dailyAt('01:20')->withoutOverlapping(120);
 // Visits and logs cleanup
 Schedule::command('save:visits-count')->dailyAt('00:05')->withoutOverlapping(30);
 Schedule::command('clear:files')->dailyAt('00:10')->withoutOverlapping(30);
+Schedule::command('visitor-data:prune --force')->dailyAt('00:15')->withoutOverlapping(30);
+Schedule::command('queue:prune-failed --hours=168')->dailyAt('00:25')->withoutOverlapping(10);
 Schedule::call(function () {
     Artisan::call('delete:redis-cache', ['key' => 'black_list_'.now()->subDay()->toDateString()]);
 })->dailyAt('00:20');

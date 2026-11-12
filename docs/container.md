@@ -42,15 +42,19 @@ scheduled backups. A host PHP or Node.js installation is not required.
 ## Quick start
 
 The image never generates `APP_KEY`, runs migrations, or creates an administrator
-on startup. Run those steps explicitly.
+on startup. Run those steps explicitly. Replace `you@example.com` with the
+operator address you will pass to `make:filament-user`. The example below
+publishes the port on loopback only and serves plain HTTP; set
+`SESSION_SECURE_COOKIE=true` once a TLS proxy terminates HTTPS for the public
+hostname.
 
 ```bash
 docker run -d --name backend-lab \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v backend-lab-storage:/var/www/html/storage \
   -e APP_KEY="base64:$(openssl rand -base64 32)" \
   -e APP_URL=http://localhost:8080 \
-  -e ADMIN_EMAILS=admin@example.com \
+  -e ADMIN_EMAILS=you@example.com \
   -e DB_CONNECTION=pgsql \
   -e DB_HOST=postgres \
   -e DB_DATABASE=laravel \

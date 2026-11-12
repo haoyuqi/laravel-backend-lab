@@ -56,6 +56,9 @@ php artisan db:seed --class=E2EDataSeeder --database=testing
 npm run test:e2e
 ```
 
+The end-to-end seeder refuses to run unless `APP_ENV` is `local` or `testing`, so
+the committed test administrator cannot be created in staging or production.
+
 The default run covers five desktop and mobile configurations. For a quicker
 local check:
 

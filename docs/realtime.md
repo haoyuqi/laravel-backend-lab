@@ -77,8 +77,10 @@ in the selected environment file before recreating all application roles.
   TLS at a proxy.
 - Keep `REVERB_SCALING_ENABLED=false` for a single Reverb instance. Scaling
   requires Redis and shared configuration.
-- `config/reverb.php` currently allows all origins. Restrict `allowed_origins`
-  for public deployments.
+- `REVERB_ALLOWED_ORIGINS` is a comma-separated list of browser origins allowed
+  to open the WebSocket. It defaults to `*` for local development; set the real
+  page origins for public deployments. `REVERB_APP_RATE_LIMITING_ENABLED`
+  defaults to `true`.
 
 The container image starts Reverb with:
 

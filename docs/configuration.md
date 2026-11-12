@@ -38,7 +38,24 @@ The application reads configuration from environment variables. Start from
 - `TELESCOPE_ENABLED` and `DEBUGBAR_ENABLED` control optional inspection tools.
 - `TRUSTED_PROXIES` lists proxy addresses or CIDR ranges when the application
   runs behind a reverse proxy.
+- `SESSION_SECURE_COOKIE` should be `true` whenever a TLS proxy terminates
+  HTTPS for a public hostname.
+- `REVERB_ALLOWED_ORIGINS` lists the browser origins allowed to open the
+  WebSocket (comma-separated). Set it to the real site origins in production.
+- `REVERB_APP_RATE_LIMITING_ENABLED` limits Reverb connection attempts; it
+  defaults to `true`.
+- `VISITOR_RETENTION_DAYS` controls how long raw visitor IP and request-path
+  rows are kept before the scheduled `visitor-data:prune` command deletes them
+  (30 by default).
 - `TEST_DB_*` configures an isolated database for the test suite.
+
+## Public rate limit
+
+`/`, `/error`, and `/time` share a per-IP limit of 60 requests per minute
+(`App\Http\Middleware\ThrottlePublicRequests`). The limiter fails open when its
+cache store is unavailable, so a Redis outage never takes the public pages down.
+Health probes are exempt. `/queue/create` and `/sort/*` keep the separate
+10-per-minute demo limit.
 
 ## Demo routes
 
@@ -58,6 +75,8 @@ This keeps visitor IPs and blacklist decisions trustworthy.
 New visitor and blocked-request logs keep the request path without query strings
 or fragments, up to 2,048 bytes. Historical rows are not rewritten. Telescope
 redacts `_token` and Livewire `components` payloads in every environment.
+`visitor-data:prune` removes raw visitor rows after `VISITOR_RETENTION_DAYS`;
+aggregate PV/UV snapshots expire from Redis after eight days.
 
 Set `LOG_CHANNEL=stderr` in containers so logs reach the container runtime. See
 [operations](operations.md) for log retention and cleanup.

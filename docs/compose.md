@@ -69,7 +69,7 @@ and scheduler. Startup never migrates, seeds, creates administrators, or changes
 | Service | Role |
 | --- | --- |
 | `app` | nginx + PHP-FPM, loopback port 8080 by default |
-| `background` | Supervisor runs one queue worker and one scheduler; do not scale this service |
+| `background` | Supervisor runs the queue worker, analytics worker, and scheduler; do not scale this service |
 | `reverb` | Optional real-time server, profile `realtime` |
 | `database` | Official PostgreSQL 18.6, profile `database` |
 | `redis` | Official Redis 7 with append-only persistence, profile `redis` |
@@ -273,9 +273,11 @@ docker compose -f compose.yaml --env-file .env.compose down
 deleting this installation's stored data. After switching to external services,
 explicitly stop previously bundled containers; keep their volumes for recovery.
 
-The background worker consumes `default`, `queue-test`, `record-visitor`,
-`black-list-log`, and `push-time`. Supervisor restarts either background process
-when it exits, and the container healthcheck requires both to be running.
+The main background worker consumes `default`, `queue-test`, `black-list-log`,
+and `push-time`; the analytics worker consumes `record-visitor` so visitor
+GeoIP and database work cannot delay blacklist logging or scheduled broadcasts.
+Supervisor restarts any background process when it exits, and the container
+healthcheck requires all of them to be running.
 Keep one `background` replica so scheduled tasks are not duplicated. If queue
 capacity later requires independent scaling, separate the worker from the
 scheduler again.

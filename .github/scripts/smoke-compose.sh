@@ -42,11 +42,14 @@ sed -e "s|^APP_KEY=.*|APP_KEY=$APP_KEY|" \
     -e '/^COMPOSE_PROFILES=/d' \
     -e "s|^DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" \
     -e "s|^APP_URL=.*|APP_URL=http://127.0.0.1:$HTTP_PORT|" \
+    -e 's|^ADMIN_EMAILS=.*|ADMIN_EMAILS=admin@example.com|' \
     -e "s|^VITE_PORT=.*|VITE_PORT=$VITE_PORT|" \
     -e 's|^VITE_HMR_HOST=.*|VITE_HMR_HOST=127.0.0.1|' \
     -e "s|^REVERB_CLIENT_PORT=.*|REVERB_CLIENT_PORT=$REVERB_PUBLIC_PORT|" \
     -e 's|^REVERB_CLIENT_HOST=.*|REVERB_CLIENT_HOST=127.0.0.1|' \
     -e 's|^BROADCAST_CONNECTION=.*|BROADCAST_CONNECTION=reverb|' \
+    -e 's|^SESSION_SECURE_COOKIE=.*|SESSION_SECURE_COOKIE=false|' \
+    -e "s|^REVERB_ALLOWED_ORIGINS=.*|REVERB_ALLOWED_ORIGINS=http://127.0.0.1:$HTTP_PORT|" \
     -e 's|^REVERB_APP_KEY=.*|REVERB_APP_KEY=compose-ci-public|' \
     -e "s|^REVERB_APP_SECRET=.*|REVERB_APP_SECRET=$(openssl rand -hex 24)|" \
     "$template" > "$COMPOSE_ENV_FILE"
