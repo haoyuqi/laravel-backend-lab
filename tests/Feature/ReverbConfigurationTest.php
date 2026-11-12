@@ -18,10 +18,10 @@ class ReverbConfigurationTest extends TestCase
 
     public function test_allowed_origins_parse_a_comma_separated_list(): void
     {
-        $config = $this->loadConfig(' https://app.example.test , https://admin.example.test ', null);
+        $config = $this->loadConfig(' app.example.test , *.example.test ', null);
 
         $this->assertSame(
-            ['https://app.example.test', 'https://admin.example.test'],
+            ['app.example.test', '*.example.test'],
             $config['apps']['apps'][0]['allowed_origins'],
         );
     }

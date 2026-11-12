@@ -40,8 +40,9 @@ The application reads configuration from environment variables. Start from
   runs behind a reverse proxy.
 - `SESSION_SECURE_COOKIE` should be `true` whenever a TLS proxy terminates
   HTTPS for a public hostname.
-- `REVERB_ALLOWED_ORIGINS` lists the browser origins allowed to open the
-  WebSocket (comma-separated). Set it to the real site origins in production.
+- `REVERB_ALLOWED_ORIGINS` lists the browser hostnames allowed to open the
+  WebSocket (comma-separated, no scheme or port). Set it to the real site hosts
+  in production.
 - `REVERB_APP_RATE_LIMITING_ENABLED` limits Reverb connection attempts; it
   defaults to `true`.
 - `VISITOR_RETENTION_DAYS` controls how long raw visitor IP and request-path

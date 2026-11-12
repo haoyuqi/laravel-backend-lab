@@ -65,7 +65,7 @@ docker run -d --name backend-lab \
 
 docker exec backend-lab php artisan migrate --force
 docker exec backend-lab php artisan make:filament-user \
-  --name=Admin --email=admin@example.com
+  --name=Admin --email=you@example.com
 ```
 
 Open `http://localhost:8080/admin` and sign in. In production, `ADMIN_EMAILS`
