@@ -27,8 +27,8 @@ The application reads configuration from environment variables. Start from
 - `ADMIN_EMAILS` is the comma-separated production allowlist for the panel,
   Horizon, and Telescope. An empty list denies panel access in production.
 - `DB_*` selects the database.
-- `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PASSWORD`, and `REDIS_PORT` configure
-  Redis.
+- `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_USERNAME`, `REDIS_PASSWORD`, and
+  `REDIS_PORT` configure Redis, including ACL authentication.
 - `CACHE_STORE`, `SESSION_DRIVER`, and `QUEUE_CONNECTION` select state and job
   storage.
 - `BROADCAST_CONNECTION`, `REVERB_*`, and `REVERB_CLIENT_*` configure real-time
@@ -49,6 +49,78 @@ The application reads configuration from environment variables. Start from
   rows are kept before the scheduled `visitor-data:prune` command deletes them
   (30 by default).
 - `TEST_DB_*` configures an isolated database for the test suite.
+
+## Shared database and Redis services
+
+Keep Laravel's normal `DB_*` variables or `DB_URL`; no deployment-specific
+connection format is required. PostgreSQL also accepts `DB_SSLMODE` (default
+`prefer`). TLS verification additionally requires the appropriate trust and
+certificate configuration for the server.
+
+Redis keeps Laravel's named `default` and `cache` connections and the optional
+`queue` connection already provided by this application:
+
+| Connection | Logical database | Connection selection |
+| --- | --- | --- |
+| `default` | `REDIS_DB` (default `0`) | Direct `Redis` calls and queues by default |
+| `cache` | `REDIS_CACHE_DB` (default `1`) | `REDIS_CACHE_CONNECTION=cache` by default |
+| `queue` | `REDIS_QUEUE_DB` (default `3`) | Opt in with `REDIS_QUEUE_CONNECTION=queue` |
+
+`REDIS_QUEUE_CONNECTION` selects a Redis connection; `QUEUE_CONNECTION=redis`
+selects Laravel's queue driver, and `REDIS_QUEUE` is the queue name. These are
+separate settings. Existing installations keep the `default` connection until
+explicitly changed; changing a DB or connection does not move pending jobs.
+
+All three inherit `REDIS_HOST`, `REDIS_PORT`, `REDIS_USERNAME`,
+`REDIS_PASSWORD`, and `REDIS_URL`. Cache and queue connections can override
+these independently using `REDIS_CACHE_HOST/PORT/USERNAME/PASSWORD/URL` or
+`REDIS_QUEUE_HOST/PORT/USERNAME/PASSWORD/URL`. Omit unused overrides; an empty
+value is an explicit value, not a request to inherit. Set `REDIS_USERNAME=null`
+when the server uses password-only authentication rather than a named ACL user.
+
+URLs use Laravel's native parser: URL fields override matching individual
+settings, and URL query options override URL path components. A shared
+`REDIS_URL` without a DB path preserves each connection's `REDIS_*_DB`. A URL
+ending in `/0` overrides those DB assignments for every connection inheriting
+it. Prefer individual fields for shared-instance DB allocation, or use explicit
+per-connection URLs. Percent-encode credentials in URLs; never commit real URLs
+containing credentials.
+
+For example, an operator can allocate DB 1 for this application's direct Redis
+usage and queue, and DB 2 for its cache:
+
+```dotenv
+REDIS_USERNAME=backend_lab
+REDIS_DB=1
+REDIS_CACHE_DB=2
+REDIS_QUEUE_CONNECTION=queue
+REDIS_QUEUE_DB=1
+REDIS_CACHE_CONNECTION=cache
+REDIS_PREFIX=backend_lab:
+CACHE_PREFIX=cache:
+BACKUP_SCHEDULE_ENABLED=false
+```
+
+Supply the host, port and private password separately. These DB assignments are
+an example, not reserved global defaults; register assignments on the shared
+server and ensure its `databases` setting includes the highest selected index.
+DBs share memory and eviction policy. Logical DBs and prefixes are not access
+controls: use dedicated ACL users restricted to application key prefixes,
+commands and Pub/Sub channels. Account for both Redis and cache prefixes.
+
+Do not grant shared-instance application users `FLUSHDB` or `FLUSHALL`.
+Laravel's Redis `cache:clear` / `Cache::flush()` clears a whole logical DB and
+does not respect prefixes; it will be rejected by a restricted ACL. Do not use
+`optimize:clear` blindly either: it also invokes cache clearing. Use explicit
+config/route/view clear commands and targeted application-key invalidation.
+The application's production cleanup commands delete individual logical keys;
+this change does not replace Laravel's cache driver or its flush semantics.
+
+A `volatile-*` eviction policy can remove any expiring key, including cache
+locks, uniqueness markers and application statistics. A different DB does not
+protect such keys. Do not add TTLs indiscriminately to pending queue data. If
+there are no eligible keys left to evict, memory-growing writes can still fail;
+monitor Redis memory, rejected writes and queue age.
 
 ## Public rate limit
 

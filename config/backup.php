@@ -13,6 +13,11 @@ $backupNotificationsEnabled = (bool) filter_var(env('BACKUP_NOTIFICATION_EMAIL')
 
 return [
 
+    // Disable automatic backup tasks without disabling manual backup commands.
+    'schedule' => [
+        'enabled' => env('BACKUP_SCHEDULE_ENABLED', true),
+    ],
+
     'backup' => [
 
         /*

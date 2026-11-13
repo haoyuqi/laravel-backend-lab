@@ -3,6 +3,27 @@
 Only action-required or breaking changes are recorded here. Routine changes are
 described in the release notes published with each tag.
 
+## Unreleased: optional shared-service configuration
+
+Existing defaults and pending queue locations are unchanged. No schema migration
+is added. New variables are documented in
+[shared-service configuration](docs/configuration.md#shared-database-and-redis-services).
+
+- If opting into `REDIS_QUEUE_CONNECTION=queue` or changing `REDIS_DB`,
+  `REDIS_QUEUE_DB`, URLs or endpoints, stop new dispatches and the scheduler,
+  drain pending/reserved/delayed jobs on the old connection, then stop workers.
+  Retain the old configuration/data. Switch all producers and consumers
+  together, recreate roles with the new environment and check actual job
+  consumption. Reverting a connection does not move jobs back automatically.
+- Remove DB paths/query DB overrides from an inherited `REDIS_URL` when using
+  separate `REDIS_*_DB` values, or configure distinct connection URLs. Laravel's
+  existing URL precedence is preserved.
+- With restricted ACL users, do not run Redis `cache:clear` or `optimize:clear`;
+  use targeted cache invalidation and explicit config/route/view cache clearing.
+- Set `BACKUP_SCHEDULE_ENABLED=false` only when automatic application backups
+  are intentionally not required; rebuild cached configuration and recreate
+  roles/restart the scheduler. Manual commands are unaffected.
+
 ## v3.0.8 to v3.1.0
 
 This release adds a published container image and moves the Reverb browser

@@ -146,10 +146,25 @@ name alone will not resolve across isolated project networks. Check database
 listening addresses, account permissions, and firewall rules as needed.
 
 On an existing Redis instance, allocate dedicated database indexes for this
-installation and use a unique `REDIS_PREFIX`/`CACHE_PREFIX`. Prefixes alone
-cannot isolate operations such as clearing an entire cache database. Production
-and development templates have different prefixes, but must also use distinct
-database indexes when sharing the same Redis instance.
+installation and use a unique `REDIS_PREFIX`/`CACHE_PREFIX` plus an ACL account.
+Configure `REDIS_USERNAME` and `REDIS_PASSWORD`; set `REDIS_DB`,
+`REDIS_CACHE_DB`, and, when selecting `REDIS_QUEUE_CONNECTION=queue`,
+`REDIS_QUEUE_DB`. The default queue connection remains `default` for backward
+compatibility. See [shared-service configuration](configuration.md#shared-database-and-redis-services)
+for URL precedence, per-connection overrides, ACL restrictions and a complete DB
+allocation example. Production and development need separate allocations too.
+
+For services in other Compose projects, maintain application-specific backend
+networks in both deployments, using a server-specific Compose override with
+`external` networks when needed. A hostname in `.env.compose` alone does not
+connect isolated networks. Keep database ports unpublished and explicitly grant
+PostgreSQL database/user/subnet access. Do not give applications database or
+Redis administrator credentials.
+
+Set `BACKUP_SCHEDULE_ENABLED=false` when another system owns backup scheduling;
+this leaves the application's workers and other scheduled jobs running. Do not
+change a Redis DB/connection on an installation with pending jobs without the
+queue migration procedure in [UPGRADE.md](../UPGRADE.md).
 
 There are no mandatory `depends_on` links to optional dependencies. Start bundled
 services with `--wait`, or check external availability before starting app roles.
