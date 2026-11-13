@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -55,12 +56,10 @@ class RecordVisitors implements ShouldQueue
         $this->url = SafeRequestUrl::sanitize((string) $this->url);
 
         // Preserve logs for soft-deleted visitors (the IP remains unique), and
-        // avoid doing a GeoIP lookup unless a visitor row must be created.
-        $visitor = Visitor::withTrashed()->where('ip', $this->ip)->first();
+        // avoid holding a database transaction or row lock across a GeoIP HTTP call.
+        $city = '';
 
-        if (! $visitor) {
-            $city = '';
-
+        if (! Visitor::withTrashed()->where('ip', $this->ip)->exists()) {
             try {
                 $city = (string) $getCityByIp->getCity($this->ip);
             } catch (\Throwable $exception) {
@@ -68,23 +67,27 @@ class RecordVisitors implements ShouldQueue
                     'exception_class' => $exception::class,
                 ]);
             }
+        }
 
-            // createOrFirst handles a concurrent insert safely, including on
-            // databases where a failed insert would otherwise poison a transaction.
-            $visitor = Visitor::withTrashed()->firstOrCreate(
-                ['ip' => $this->ip],
-                ['city' => $city]
+        DB::transaction(function () use ($city): void {
+            $visitor = Visitor::withTrashed()
+                ->where('ip', $this->ip)
+                ->lockForUpdate()
+                ->first()
+                ?? Visitor::withTrashed()->createOrFirst(
+                    ['ip' => $this->ip],
+                    ['city' => $city]
+                );
+
+            $visitorLog = $visitor->logs()->withTrashed()->firstOrCreate(
+                ['event_id' => $this->eventId()],
+                ['url' => $this->url]
             );
-        }
 
-        $visitorLog = $visitor->logs()->withTrashed()->firstOrCreate(
-            ['event_id' => $this->eventId()],
-            ['url' => $this->url]
-        );
-
-        if ((int) $visitorLog->visitor_id !== (int) $visitor->id) {
-            throw new \RuntimeException('Visitor log event is already associated with another visitor.');
-        }
+            if ((int) $visitorLog->visitor_id !== (int) $visitor->id) {
+                throw new \RuntimeException('Visitor log event is already associated with another visitor.');
+            }
+        }, 3);
     }
 
     private function eventId(): string

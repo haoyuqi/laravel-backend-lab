@@ -2,6 +2,16 @@
 
 $retentionDays = env('VISITOR_RETENTION_DAYS');
 
+if ($retentionDays === null || (is_string($retentionDays) && trim($retentionDays) === '')) {
+    $resolvedRetentionDays = 30;
+} elseif (is_string($retentionDays)) {
+    $trimmed = trim($retentionDays);
+    $validated = filter_var($trimmed, FILTER_VALIDATE_INT);
+    $resolvedRetentionDays = $validated !== false ? $validated : $trimmed;
+} else {
+    $resolvedRetentionDays = $retentionDays;
+}
+
 return [
 
     /*
@@ -15,8 +25,6 @@ return [
     |
     */
 
-    'retention_days' => $retentionDays === null || (is_string($retentionDays) && trim($retentionDays) === '')
-        ? 30
-        : (int) $retentionDays,
+    'retention_days' => $resolvedRetentionDays,
 
 ];

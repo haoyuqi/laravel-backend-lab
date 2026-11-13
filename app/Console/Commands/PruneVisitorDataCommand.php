@@ -6,7 +6,7 @@ use App\Models\Visitor;
 use App\Models\VisitorLog;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class PruneVisitorDataCommand extends Command
 {
@@ -27,17 +27,17 @@ class PruneVisitorDataCommand extends Command
         }
 
         $cutoff = now()->subDays($days);
-        $logQuery = VisitorLog::withTrashed()->where('created_at', '<', $cutoff);
-        $visitorQuery = $this->orphanedVisitors($cutoff);
 
         if (! $this->option('force')) {
-            $this->info('Dry run: '.$logQuery->count().' visitor logs and '.$visitorQuery->count().' visitors eligible. Use --force to delete.');
+            $logCount = VisitorLog::withTrashed()->where('created_at', '<', $cutoff)->count();
+            $visitorCount = $this->orphanedVisitors($cutoff)->count();
+            $this->info("Dry run: {$logCount} visitor logs and {$visitorCount} visitors eligible. Use --force to delete.");
 
             return self::SUCCESS;
         }
 
-        $logs = $this->deleteInBatches($logQuery, VisitorLog::class);
-        $visitors = $this->deleteInBatches($visitorQuery, Visitor::class);
+        $logs = $this->deleteExpiredLogs($cutoff);
+        $visitors = $this->deleteOrphanedVisitors($cutoff);
         $this->info("Deleted {$logs} visitor logs and {$visitors} visitors.");
 
         return self::SUCCESS;
@@ -45,13 +45,13 @@ class PruneVisitorDataCommand extends Command
 
     private function retentionDays(): ?int
     {
-        $option = $this->option('days');
+        $raw = $this->option('days') ?? config('visitor.retention_days', 30);
 
-        if ($option === null) {
-            $option = (string) config('visitor.retention_days', 30);
+        if (! is_int($raw) && ! is_string($raw)) {
+            return null;
         }
 
-        $days = filter_var($option, FILTER_VALIDATE_INT, [
+        $days = filter_var($raw, FILTER_VALIDATE_INT, [
             'options' => ['min_range' => 1, 'max_range' => 3650],
         ]);
 
@@ -71,15 +71,74 @@ class PruneVisitorDataCommand extends Command
             });
     }
 
-    /**
-     * @param  class-string<Model>  $model
-     */
-    private function deleteInBatches(Builder $query, string $model): int
+    private function deleteExpiredLogs(\DateTimeInterface $cutoff): int
     {
         $deleted = 0;
+        $lastId = 0;
 
-        while (($ids = (clone $query)->orderBy('id')->limit(1000)->pluck('id'))->isNotEmpty()) {
-            $deleted += $model::withTrashed()->whereIn('id', $ids)->forceDelete();
+        while (true) {
+            $ids = VisitorLog::withTrashed()
+                ->where('created_at', '<', $cutoff)
+                ->where('id', '>', $lastId)
+                ->orderBy('id')
+                ->limit(1000)
+                ->pluck('id');
+
+            if ($ids->isEmpty()) {
+                break;
+            }
+
+            $lastId = (int) $ids->last();
+            $deleted += DB::transaction(
+                fn (): int => VisitorLog::withTrashed()->whereIn('id', $ids)->forceDelete(),
+                3
+            );
+        }
+
+        return $deleted;
+    }
+
+    private function deleteOrphanedVisitors(\DateTimeInterface $cutoff): int
+    {
+        $deleted = 0;
+        $lastId = 0;
+
+        while (true) {
+            $ids = $this->orphanedVisitors($cutoff)
+                ->where('id', '>', $lastId)
+                ->orderBy('id')
+                ->limit(1000)
+                ->pluck('id');
+
+            if ($ids->isEmpty()) {
+                break;
+            }
+
+            $lastId = (int) $ids->last();
+
+            $deleted += DB::transaction(function () use ($ids, $cutoff): int {
+                $lockedIds = Visitor::withTrashed()
+                    ->whereIn('id', $ids)
+                    ->where('created_at', '<', $cutoff)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->pluck('id');
+
+                $activeIds = VisitorLog::withTrashed()
+                    ->whereIn('visitor_id', $lockedIds)
+                    ->where('created_at', '>=', $cutoff)
+                    ->lockForUpdate()
+                    ->pluck('visitor_id')
+                    ->all();
+
+                $deletableIds = array_values(array_diff($lockedIds->all(), $activeIds));
+
+                if ($deletableIds === []) {
+                    return 0;
+                }
+
+                return Visitor::withTrashed()->whereIn('id', $deletableIds)->forceDelete();
+            }, 3);
         }
 
         return $deleted;

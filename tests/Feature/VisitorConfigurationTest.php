@@ -17,10 +17,15 @@ class VisitorConfigurationTest extends TestCase
     public function test_retention_days_parses_explicit_values(): void
     {
         $this->assertSame(45, $this->loadRetentionDays('45'));
-        $this->assertSame(0, $this->loadRetentionDays('abc'));
+        $this->assertSame(45, $this->loadRetentionDays(' 45 '));
+        $this->assertSame(0, $this->loadRetentionDays('0'));
+        $this->assertSame('1.5', $this->loadRetentionDays('1.5'));
+        $this->assertSame('30abc', $this->loadRetentionDays('30abc'));
+        $this->assertSame('abc', $this->loadRetentionDays('abc'));
+        $this->assertFalse($this->loadRetentionDays('false'));
     }
 
-    private function loadRetentionDays(?string $value): int
+    private function loadRetentionDays(?string $value): mixed
     {
         $repository = Env::getRepository();
         $previous = $repository->get('VISITOR_RETENTION_DAYS');
