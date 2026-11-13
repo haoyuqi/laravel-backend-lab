@@ -15,6 +15,19 @@ project names. Key creation and migrations are explicit. See [Compose deployment
 The reusable Compose CI workflow tests both environments and gates `CI result`,
 including release checks. No automatic production deployment is configured.
 
+## Shared-service configuration
+
+Database and Redis connections remain standard Laravel configuration arrays.
+Redis ACL credentials inherit from common variables, with optional cache/queue
+endpoint overrides; the framework retains ownership of URL parsing and its
+precedence. Cache and queue connection names are selectable without silently
+moving existing queues. See [configuration](configuration.md#shared-database-and-redis-services)
+for the supported variables and shared-instance boundaries.
+`BACKUP_SCHEDULE_ENABLED` controls registration of the three automatic backup
+tasks; it does not disable other scheduled work or manual backup commands.
+[SharedServiceConfigurationTest](../tests/Feature/SharedServiceConfigurationTest.php)
+verifies defaults, independent overrides, native URL parsing and task selection.
+
 ## Boundaries
 
 Keep HTTP controllers, middleware, console commands, and Filament pages at the

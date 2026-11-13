@@ -80,7 +80,14 @@ runtime handle rotation.
 
 ## Backups
 
-Backups use `spatie/laravel-backup` and run from the scheduler:
+Set `BACKUP_SCHEDULE_ENABLED=false` to omit all three automatic backup tasks
+(`backup:run`, `backup:clean`, `backup:monitor`) while retaining the other
+scheduled jobs. The default is `true`, preserving existing installations.
+Manual backup commands remain available. After changing the environment,
+rebuild any cached configuration in each application role and restart the
+long-running scheduler (recreate Compose roles when their environment changes).
+
+Backups use `spatie/laravel-backup` and, when enabled, run from the scheduler:
 
 - `backup:run` archives the configured files and dumps the database selected by
   `DB_CONNECTION`.

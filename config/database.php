@@ -79,7 +79,7 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'schema' => 'public',
-            'sslmode' => 'prefer',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
         'sqlsrv' => [
@@ -169,6 +169,7 @@ return [
 
         'default' => [
             'url' => env('REDIS_URL'),
+            'username' => env('REDIS_USERNAME'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'password' => env('REDIS_PASSWORD', null),
             'port' => env('REDIS_PORT', 6379),
@@ -176,18 +177,20 @@ return [
         ],
 
         'cache' => [
-            'url' => env('REDIS_URL'),
-            'host' => env('REDIS_HOST', '127.0.0.1'),
-            'password' => env('REDIS_PASSWORD', null),
-            'port' => env('REDIS_PORT', 6379),
+            'url' => env('REDIS_CACHE_URL', env('REDIS_URL')),
+            'username' => env('REDIS_CACHE_USERNAME', env('REDIS_USERNAME')),
+            'host' => env('REDIS_CACHE_HOST', env('REDIS_HOST', '127.0.0.1')),
+            'password' => env('REDIS_CACHE_PASSWORD', env('REDIS_PASSWORD', null)),
+            'port' => env('REDIS_CACHE_PORT', env('REDIS_PORT', 6379)),
             'database' => env('REDIS_CACHE_DB', 1),
         ],
 
         'queue' => [
-            'url' => env('REDIS_URL'),
-            'host' => env('REDIS_HOST', '127.0.0.1'),
-            'password' => env('REDIS_PASSWORD', null),
-            'port' => env('REDIS_PORT', 6379),
+            'url' => env('REDIS_QUEUE_URL', env('REDIS_URL')),
+            'username' => env('REDIS_QUEUE_USERNAME', env('REDIS_USERNAME')),
+            'host' => env('REDIS_QUEUE_HOST', env('REDIS_HOST', '127.0.0.1')),
+            'password' => env('REDIS_QUEUE_PASSWORD', env('REDIS_PASSWORD', null)),
+            'port' => env('REDIS_QUEUE_PORT', env('REDIS_PORT', 6379)),
             'database' => env('REDIS_QUEUE_DB', 3),
         ],
 
