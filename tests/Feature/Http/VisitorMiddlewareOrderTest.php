@@ -43,6 +43,15 @@ class VisitorMiddlewareOrderTest extends TestCase
             ->withHeader('X-Forwarded-For', '203.0.113.1')->get('/time')->assertOk();
     }
 
+    public function test_non_throttled_error_responses_are_still_recorded(): void
+    {
+        $this->mock(BlackListService::class)->shouldReceive('checkIp')->once()->andReturn(false);
+
+        $this->get('/missing')->assertNotFound();
+
+        Queue::assertPushed(RecordVisitors::class, 1);
+    }
+
     public function test_maintenance_rejects_requests_before_tracking(): void
     {
         $this->mock(MaintenanceMode::class, function ($mock) {

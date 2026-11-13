@@ -2,9 +2,11 @@
 
 use App\Http\Middleware\CountPvAndUv;
 use App\Http\Middleware\RecordVisitors;
+use App\Http\Middleware\ThrottlePublicRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -22,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Resolve trusted proxy headers and maintenance mode before tracking visitors.
         $middleware->append(RecordVisitors::class);
         $middleware->appendToGroup('web', CountPvAndUv::class);
+        $middleware->appendToPriorityList(SubstituteBindings::class, CountPvAndUv::class);
+        $middleware->prependToPriorityList(CountPvAndUv::class, ThrottlePublicRequests::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

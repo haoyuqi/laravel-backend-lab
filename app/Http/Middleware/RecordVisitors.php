@@ -23,19 +23,26 @@ class RecordVisitors
             return $next($request);
         }
 
+        $ip = null;
+        $requestUrl = '';
+
         if (! app()->isLocal()) {
-            $ip = $request->getClientIp();
-            if ($ip === null) {
+            $clientIp = $request->getClientIp();
+            if ($clientIp === null) {
                 return $next($request);
             }
-            $ip = IpAddress::normalize($ip);
+            $ip = IpAddress::normalize($clientIp);
             $requestUrl = SafeRequestUrl::sanitize($request->getRequestUri());
             $blackListService = app()->make(BlackListService::class);
 
             if ($blackListService->checkIp($ip, $requestUrl)) {
                 abort(403);
             }
+        }
 
+        $response = $next($request);
+
+        if ($ip !== null && $response->getStatusCode() !== 429) {
             try {
                 dispatch(new RecordVisitorsJob($ip, $requestUrl));
             } catch (\Throwable $e) {
@@ -47,6 +54,6 @@ class RecordVisitors
             }
         }
 
-        return $next($request);
+        return $response;
     }
 }

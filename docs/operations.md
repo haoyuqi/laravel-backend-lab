@@ -11,7 +11,11 @@ container deployments.
 
 ```bash
 # Queue worker. The push-time queue feeds the /time page.
-php artisan queue:work --queue=queue-test,record-visitor,black-list-log,push-time
+php artisan queue:work --queue=default,queue-test,black-list-log,push-time
+
+# Visitor analytics worker. Kept separate so GeoIP and visitor writes cannot
+# delay blacklist logging or scheduled broadcasts.
+php artisan queue:work --queue=record-visitor
 
 # Horizon, when using a Redis queue.
 php artisan horizon
@@ -23,9 +27,9 @@ php artisan schedule:work
 php artisan reverb:start --host=0.0.0.0 --port=8080
 ```
 
-Keep workers under a process supervisor. Compose combines the worker and
-scheduler in one `background` container managed by Supervisor, with a healthcheck
-that checks both processes. Keep one replica to avoid duplicate schedulers;
+Keep workers under a process supervisor. Compose combines the queue worker,
+analytics worker, and scheduler in one `background` container managed by
+Supervisor, with a healthcheck that checks every process. Keep one replica to avoid duplicate schedulers;
 see [Compose deployment](compose.md#background-services-and-status) for commands.
 Standalone roles can still use the same image with a command override. Disable the inherited HTTP
 healthcheck for queue, scheduler, and Horizon containers; a Reverb container can
@@ -48,14 +52,16 @@ The scheduler runs these entries from `routes/console.php`:
 
 | Schedule | Task |
 | --- | --- |
-| Every minute | Broadcast the time event (`push-time` queue) |
-| 01:00 / 01:10 / 01:20 | `backup:run`, `backup:clean`, `backup:monitor` |
 | 00:05 | `save:visits-count` |
 | 00:10 | `clear:files` |
+| 00:15 | `visitor-data:prune --force` |
 | 00:20 | Delete yesterday's blacklist cache key |
+| 00:25 | `queue:prune-failed --hours=168` |
 | 00:30 | `telescope:prune --hours=72` |
+| 01:00 / 01:10 / 01:20 | `backup:run`, `backup:clean`, `backup:monitor` |
 | 05:00 | `download:bing-wallpaper` |
 | 07:00 and 13:00 | Delete today's blacklist cache key |
+| Every minute | Broadcast the time event (`push-time` queue) |
 | Every six hours | `geoip:clear` |
 
 Schedule locks prevent overlapping instances of the same command. Multi-server
@@ -66,6 +72,9 @@ server.
 
 Laravel writes to `storage/logs` with the `stack` channel, or to stderr when
 `LOG_CHANNEL=stderr`. `clear:files` deletes log files older than seven days.
+`visitor-data:prune` permanently deletes raw `visitors` and `visitor_logs` rows
+older than `VISITOR_RETENTION_DAYS` (30 by default), and `queue:prune-failed`
+drops failed job payloads older than seven days.
 Container deployments should use `LOG_CHANNEL=stderr` and let the container
 runtime handle rotation.
 

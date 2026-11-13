@@ -8,6 +8,7 @@ use App\Models\Visitor;
 use App\Models\VisitorLog;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
@@ -115,5 +116,37 @@ class RecordVisitorsTest extends TestCase
         $job->handle($geo);
 
         $this->assertSame(1, $visitor->logs()->where('url', '/legacy-retry')->count());
+    }
+
+    public function test_persistence_runs_inside_transaction_after_geoip_lookup(): void
+    {
+        $initialTransactionLevel = DB::transactionLevel();
+        $geoTransactionLevel = null;
+        $visitorQueryLevels = [];
+
+        DB::listen(function ($query) use (&$visitorQueryLevels): void {
+            if (str_contains(strtolower($query->sql), 'visitors')) {
+                $visitorQueryLevels[] = DB::transactionLevel();
+            }
+        });
+
+        $geo = $this->mock(GetCityByIpAbstract::class);
+        $geo->shouldReceive('getCity')
+            ->once()
+            ->with('203.0.113.18')
+            ->andReturnUsing(function () use (&$geoTransactionLevel): string {
+                $geoTransactionLevel = DB::transactionLevel();
+
+                return 'Tokyo';
+            });
+
+        (new RecordVisitors('203.0.113.18', '/tx-check'))->handle($geo);
+
+        $this->assertSame($initialTransactionLevel, $geoTransactionLevel);
+        $this->assertGreaterThanOrEqual(2, count($visitorQueryLevels));
+        $this->assertSame($initialTransactionLevel, $visitorQueryLevels[0]);
+        $this->assertSame($initialTransactionLevel + 1, $visitorQueryLevels[1]);
+        $this->assertDatabaseHas('visitors', ['ip' => '203.0.113.18', 'city' => 'Tokyo']);
+        $this->assertDatabaseHas('visitor_logs', ['url' => '/tx-check']);
     }
 }

@@ -16,6 +16,12 @@ class E2EDataSeeder extends Seeder
      */
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            $this->command?->warn('Skipping the end-to-end seeder outside the local and testing environments.');
+
+            return;
+        }
+
         // 1. Admin User for Filament Panel authentication
         User::firstOrCreate(
             ['email' => 'admin@example.com'],
