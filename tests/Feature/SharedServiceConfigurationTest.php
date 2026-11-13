@@ -187,17 +187,23 @@ class SharedServiceConfigurationTest extends TestCase
 
         $previousEnv = $_ENV;
         $previousServer = $_SERVER;
+        $previousProcess = array_combine($names, array_map(getenv(...), $names));
         try {
             foreach ($names as $name) {
                 unset($_ENV[$name], $_SERVER[$name]);
+                putenv($name);
             }
             foreach ($values as $name => $value) {
                 $_ENV[$name] = $_SERVER[$name] = $value;
+                putenv("{$name}={$value}");
             }
             $callback();
         } finally {
             $_ENV = $previousEnv;
             $_SERVER = $previousServer;
+            foreach ($previousProcess as $name => $value) {
+                putenv($value === false ? $name : "{$name}={$value}");
+            }
         }
     }
 }
