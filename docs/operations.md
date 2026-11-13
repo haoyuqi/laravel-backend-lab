@@ -52,16 +52,16 @@ The scheduler runs these entries from `routes/console.php`:
 
 | Schedule | Task |
 | --- | --- |
-| Every minute | Broadcast the time event (`push-time` queue) |
-| 01:00 / 01:10 / 01:20 | `backup:run`, `backup:clean`, `backup:monitor` |
 | 00:05 | `save:visits-count` |
 | 00:10 | `clear:files` |
 | 00:15 | `visitor-data:prune --force` |
-| 00:25 | `queue:prune-failed --hours=168` |
 | 00:20 | Delete yesterday's blacklist cache key |
+| 00:25 | `queue:prune-failed --hours=168` |
 | 00:30 | `telescope:prune --hours=72` |
+| 01:00 / 01:10 / 01:20 | `backup:run`, `backup:clean`, `backup:monitor` |
 | 05:00 | `download:bing-wallpaper` |
 | 07:00 and 13:00 | Delete today's blacklist cache key |
+| Every minute | Broadcast the time event (`push-time` queue) |
 | Every six hours | `geoip:clear` |
 
 Schedule locks prevent overlapping instances of the same command. Multi-server

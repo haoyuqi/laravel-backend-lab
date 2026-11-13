@@ -52,7 +52,7 @@ The application reads configuration from environment variables. Start from
 
 ## Public rate limit
 
-`/`, `/error`, and `/time` share a per-IP limit of 60 requests per minute
+`/`, `/error`, `/time`, and `/test` share a per-IP limit of 60 requests per minute
 (`App\Http\Middleware\ThrottlePublicRequests`). The limiter fails open when its
 cache store is unavailable, so a Redis outage never takes the public pages down.
 Health probes are exempt. `/queue/create` and `/sort/*` keep the separate

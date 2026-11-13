@@ -1,5 +1,7 @@
 <?php
 
+$retentionDays = env('VISITOR_RETENTION_DAYS');
+
 return [
 
     /*
@@ -13,6 +15,8 @@ return [
     |
     */
 
-    'retention_days' => (int) env('VISITOR_RETENTION_DAYS', 30),
+    'retention_days' => $retentionDays === null || (is_string($retentionDays) && trim($retentionDays) === '')
+        ? 30
+        : (int) $retentionDays,
 
 ];

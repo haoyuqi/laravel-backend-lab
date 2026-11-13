@@ -76,7 +76,9 @@ and scheduler. Startup never migrates, seeds, creates administrators, or changes
 
 Dependencies have no published ports. Restrict the private network to trusted
 containers; bundled Redis has no password. `HTTP_BIND` defaults to loopback.
-Use your existing production TLS proxy and configure trusted proxies explicitly.
+Use your existing production TLS proxy and configure trusted proxies explicitly;
+`.env.compose.example` keeps `SESSION_SECURE_COOKIE=false` for the loopback HTTP
+quick start and must be set to `true` when serving over HTTPS.
 
 ## Existing database and/or Redis
 

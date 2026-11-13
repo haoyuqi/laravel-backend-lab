@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\IpAddress;
 use App\Support\RedisFailureLogger;
 use Closure;
 use Illuminate\Http\Request;
@@ -26,7 +27,8 @@ class ThrottlePublicRequests
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $key = 'public-web:'.$request->ip();
+        $ip = IpAddress::normalize((string) $request->ip());
+        $key = 'public-web:'.$ip;
 
         try {
             if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
@@ -38,7 +40,7 @@ class ThrottlePublicRequests
             RateLimiter::hit($key, self::DECAY_SECONDS);
         } catch (\Throwable $exception) {
             RedisFailureLogger::report('public rate limiter failure', [
-                'ip' => $request->ip(),
+                'ip' => $ip,
                 'error' => $exception->getMessage(),
             ]);
         }

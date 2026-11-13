@@ -103,8 +103,10 @@ module responsibilities or runtime paths change.
    PostgreSQL and canonical/equivalent form matching on SQLite/MySQL) so stale
    Redis data can never allow a blocked IP or block an allowed IP. When matched,
    it dispatches `App\Jobs\BlackListLog` and aborts with HTTP `403`.
-4. Allowed requests dispatch `App\Jobs\RecordVisitors` on the `record-visitor`
-   queue. Both jobs deduplicate retries using a unique `event_id` UUID (falling
+4. The middleware performs the blacklist check before the response, then
+   dispatches `App\Jobs\RecordVisitors` on the `record-visitor` queue after the
+   response and skips HTTP `429` responses so throttled requests do not enqueue
+   work. Both jobs deduplicate retries using a unique `event_id` UUID (falling
    back to the queue job UUID for legacy payloads) and re-sanitize URLs before
    inserting into `visitor_logs` or `black_list_logs`.
 5. `RecordVisitors` only calls the GeoIP provider when creating a new `Visitor`

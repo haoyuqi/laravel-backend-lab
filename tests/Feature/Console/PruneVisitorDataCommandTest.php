@@ -73,6 +73,15 @@ class PruneVisitorDataCommandTest extends TestCase
         $this->assertDatabaseHas('visitors', ['id' => $retained->id]);
     }
 
+    public function test_invalid_configured_retention_is_rejected_even_with_force(): void
+    {
+        config(['visitor.retention_days' => 0]);
+
+        $this->artisan('visitor-data:prune', ['--force' => true])
+            ->expectsOutput('--days must be an integer between 1 and 3650.')
+            ->assertFailed();
+    }
+
     public function test_minimum_retention_is_accepted(): void
     {
         $this->artisan('visitor-data:prune', ['--days' => '1'])->assertSuccessful();

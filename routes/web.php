@@ -11,9 +11,8 @@ Route::middleware(ThrottlePublicRequests::class)->group(function () {
     Route::get('/', [IndexController::class, 'index']);
     Route::get('/error', [IndexController::class, 'error']);
     Route::get('/time', [IndexController::class, 'time']);
+    Route::get('/test', [IndexController::class, 'test']);
 });
-
-Route::get('/test', [IndexController::class, 'test']);
 
 Route::middleware([EnsureDemoEnabled::class, 'throttle:demo'])->group(function () {
     Route::post('/queue/create', [QueueController::class, 'create']);
