@@ -231,6 +231,7 @@ REVERB_SCHEME=http
 REVERB_CLIENT_HOST=localhost
 REVERB_CLIENT_PORT=8081
 REVERB_CLIENT_SCHEME=http
+REVERB_ALLOWED_ORIGINS=<browser hostname>
 ```
 
 Keep the Reverb keys created by the initialization helper. If dependencies are
@@ -238,7 +239,9 @@ external, retain your chosen profiles and add only `realtime` (for example,
 `COMPOSE_PROFILES=realtime` when both are external). In development the browser
 port is 8083 instead of 8081. For remote browsers replace `localhost` with a
 browser-reachable hostname; the default loopback binding is for local access or
-a proxy on the same host.
+a proxy on the same host. `REVERB_ALLOWED_ORIGINS` must list the browser
+hostnames that serve `/time`, without scheme or port; the template default only
+allows `localhost`.
 
 Apply the configuration to **all** application roles, not just Reverb:
 
