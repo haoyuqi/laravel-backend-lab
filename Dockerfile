@@ -10,6 +10,8 @@ COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /u
 
 RUN apk add --no-cache \
         nginx \
+        nginx-mod-http-brotli \
+        brotli \
         supervisor \
         curl \
         tzdata \
@@ -63,12 +65,14 @@ FROM node:${NODE_VERSION}-alpine AS assets
 WORKDIR /app
 
 COPY package.json package-lock.json vite.config.js ./
+COPY docker/precompress.mjs ./
 RUN npm ci --no-audit --no-fund
 
 COPY resources resources
 COPY --from=vendor /var/www/html/vendor ./vendor
 
-RUN npm run build
+RUN npm run build \
+    && node precompress.mjs public/build/assets
 
 FROM base AS runtime
 
@@ -101,6 +105,12 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/background.conf /etc/supervisor/background.conf
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker/precompress.sh /usr/local/bin/precompress.sh
+
+# Filament publishes its runtime assets during the build, so they cannot be
+# precompressed by the Node stage. Compress them here instead so nginx can serve
+# *.gz / *.br directly.
+RUN chmod 0755 /usr/local/bin/precompress.sh
 
 # The admin panel sets viteTheme(), so Filament never registers its default
 # theme at public/css/filament. Publishing and removing it in one layer keeps
@@ -116,6 +126,7 @@ RUN mkdir -p \
         bootstrap/cache \
     && php artisan filament:assets \
     && rm -rf public/css/filament \
+    && precompress.sh public/js public/fonts \
     && php artisan storage:link \
     && rm -f bootstrap/cache/*.php \
     && chown -R www-data:www-data storage bootstrap/cache public \
