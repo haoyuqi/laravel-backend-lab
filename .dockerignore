@@ -24,5 +24,11 @@ public/fonts
 public/hot
 public/js
 public/storage
+# Dashboard bundles are published by Telescope/Horizon and never served in
+# production (TELESCOPE_ENABLED=false, no Horizon supervisor). Keep them out of
+# the build context so they stay out of the image. The development compose file
+# bind-mounts ./public, which still provides them locally.
+public/vendor/horizon
+public/vendor/telescope
 coverage
 *.log
