@@ -117,3 +117,5 @@ Laravel Backend Lab is open-source software licensed under the
 ## Acknowledgements
 
 Thanks to [JetBrains](https://www.jetbrains.com/) for supporting the project.
+
+Production Compose supports bundled or shared database networks and resource limits through a single private `.env`, without a server override file. See [deployment configuration](docs/compose.md#shared-docker-networks-and-resource-budgets).

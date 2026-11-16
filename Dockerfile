@@ -82,7 +82,10 @@ LABEL org.opencontainers.image.title="Laravel Backend Lab" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.revision="${VCS_REF}"
 
-ENV APP_ENV=production \
+ENV PHP_MEMORY_LIMIT=256M \
+    PHP_OPCACHE_MEMORY=96 \
+    PHP_FPM_MAX_CHILDREN=4 \
+    APP_ENV=production \
     APP_VERSION=${APP_VERSION} \
     LOG_CHANNEL=stderr \
     TELESCOPE_ENABLED=false \

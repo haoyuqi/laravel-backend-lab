@@ -14,7 +14,7 @@ database or Redis.
 
 | Mode | Compose file | Environment file | Application |
 | --- | --- | --- | --- |
-| Production | `compose.yaml` | `.env.compose` | Published image, HTTP port 8080 |
+| Production | `compose.yaml` | `.env` | Published image, HTTP port 8080 |
 | Development | `compose.dev.yaml` | `.env.compose.dev` | Source mounts and Vite, HTTP port 8082 |
 
 The default is a self-contained installation: `COMPOSE_PROFILES=database,redis`.
@@ -35,17 +35,17 @@ and business operations affect that database: use a dedicated database/account.
 From a checkout of the desired release:
 
 ```bash
-cp .env.compose.example .env.compose
-chmod 600 .env.compose
+cp .env.compose.example .env
+chmod 600 .env
 docker run --rm -i --user "$(id -u):$(id -g)" --entrypoint php \
-  -v "$PWD/.env.compose:/deployment.env" \
+  -v "$PWD/.env:/deployment.env" \
   ghcr.io/haoyuqi/laravel-backend-lab:latest < docker/compose-init.php
 ```
 
 This explicit helper fills only empty application, database, and Reverb keys.
 It prints no secrets and preserves existing values on repeat runs. Its temporary
 config mount is outside the application tree and backups. Do not rotate `APP_KEY`
-on upgrade. Set `APP_URL` and `ADMIN_EMAILS` in `.env.compose`, and protect/back up
+on upgrade. Set `APP_URL` and `ADMIN_EMAILS` in `.env`, and protect/back up
 this ignored file separately. Choose `VERSION=latest`, a full release such as
 `3.2.0`, or `3.2.0@sha256:<published-index-digest>` to pin the artifact.
 
@@ -56,11 +56,11 @@ precedence over the file. Compose `env_file` passes
 variables into containers; it does not mount Laravel's `.env`.
 
 ```bash
-docker compose -f compose.yaml --env-file .env.compose pull
-docker compose -f compose.yaml --env-file .env.compose up -d --wait database redis
-docker compose -f compose.yaml --env-file .env.compose run --rm app php artisan migrate --force
-docker compose -f compose.yaml --env-file .env.compose run --rm app php artisan make:filament-user
-docker compose -f compose.yaml --env-file .env.compose up -d
+docker compose -f compose.yaml --env-file .env pull
+docker compose -f compose.yaml --env-file .env up -d --wait database redis
+docker compose -f compose.yaml --env-file .env run --rm app php artisan migrate --force
+docker compose -f compose.yaml --env-file .env run --rm app php artisan make:filament-user
+docker compose -f compose.yaml --env-file .env up -d
 ```
 
 Use an email from `ADMIN_EMAILS`. Prepare the schema before starting workers
@@ -90,7 +90,7 @@ quick start and must be set to `true` when serving over HTTPS.
 | Both existing | Empty: `COMPOSE_PROFILES=` | External `DB_*` and `REDIS_*` |
 
 The final startup command stays the same in all cases:
-`docker compose -f compose.yaml --env-file .env.compose up -d`.
+`docker compose -f compose.yaml --env-file .env up -d`.
 With only one bundled dependency production starts three services using two
 image types; with neither it starts two services using one image type.
 Development adds Vite to each count. Reverb adds one service when enabled.
@@ -124,15 +124,15 @@ After preparing the application key and administrator allowlist:
 
 ```bash
 # No database or Redis container will be started.
-docker compose -f compose.yaml --env-file .env.compose pull
-docker compose -f compose.yaml --env-file .env.compose run --rm app php artisan migrate --force
-docker compose -f compose.yaml --env-file .env.compose run --rm app php artisan make:filament-user
-docker compose -f compose.yaml --env-file .env.compose up -d
+docker compose -f compose.yaml --env-file .env pull
+docker compose -f compose.yaml --env-file .env run --rm app php artisan migrate --force
+docker compose -f compose.yaml --env-file .env run --rm app php artisan make:filament-user
+docker compose -f compose.yaml --env-file .env up -d
 ```
 
 If Redis is not already available, set `COMPOSE_PROFILES=redis` and keep
 `REDIS_HOST=redis` from the template. Before migration, run
-`docker compose -f compose.yaml --env-file .env.compose up -d --wait redis`.
+`docker compose -f compose.yaml --env-file .env up -d --wait redis`.
 If only the database is bundled, use `COMPOSE_PROFILES=database` and prepare it
 with `up -d --wait database`. Do not run `up ... database` for an external-only
 installation: explicitly naming a service starts it even if its profile is off.
@@ -154,9 +154,8 @@ compatibility. See [shared-service configuration](configuration.md#shared-databa
 for URL precedence, per-connection overrides, ACL restrictions and a complete DB
 allocation example. Production and development need separate allocations too.
 
-For services in other Compose projects, maintain application-specific backend
-networks in both deployments, using a server-specific Compose override with
-`external` networks when needed. A hostname in `.env.compose` alone does not
+For services in other Compose projects, select existing backend networks through
+the production network variables documented below; no override file is needed. A hostname in `.env` alone does not
 connect isolated networks. Keep database ports unpublished and explicitly grant
 PostgreSQL database/user/subnet access. Do not give applications database or
 Redis administrator credentials.
@@ -245,9 +244,9 @@ Apply the configuration to **all** application roles, not just Reverb:
 
 ```bash
 # Production
-docker compose -f compose.yaml --env-file .env.compose up -d
-docker compose -f compose.yaml --env-file .env.compose ps
-docker compose -f compose.yaml --env-file .env.compose logs --tail=50 reverb background
+docker compose -f compose.yaml --env-file .env up -d
+docker compose -f compose.yaml --env-file .env ps
+docker compose -f compose.yaml --env-file .env logs --tail=50 reverb background
 
 # Development (use this instead of the production commands)
 docker compose -f compose.dev.yaml --env-file .env.compose.dev up -d
@@ -275,14 +274,14 @@ The normal `up -d` starts the queue worker and scheduler automatically. Use the
 matching Compose and environment files for every operation; production examples:
 
 ```bash
-docker compose -f compose.yaml --env-file .env.compose ps
-docker compose -f compose.yaml --env-file .env.compose logs --tail=50 app background
-docker compose -f compose.yaml --env-file .env.compose exec background supervisorctl -c /etc/supervisor/background.conf status
+docker compose -f compose.yaml --env-file .env ps
+docker compose -f compose.yaml --env-file .env logs --tail=50 app background
+docker compose -f compose.yaml --env-file .env exec background supervisorctl -c /etc/supervisor/background.conf status
 # After editing PHP source in development, restart the long-running worker
 # using compose.dev.yaml and .env.compose.dev instead.
-docker compose -f compose.yaml --env-file .env.compose restart background
+docker compose -f compose.yaml --env-file .env restart background
 # Stop this installation without deleting its persistent volumes.
-docker compose -f compose.yaml --env-file .env.compose down
+docker compose -f compose.yaml --env-file .env down
 ```
 
 `restart` does not apply changed environment settings or image versions; use
@@ -351,3 +350,55 @@ Use `bash .github/scripts/smoke-compose.sh production` with `APP_IMAGE`/`VERSION
 pointing to a local image, or argument `development` to build its target.
 `COMPOSE_BROWSER_CHECK=true` runs Playwright after preparing Node dependencies
 and Chromium. Cleanup targets only test-owned projects and temporary files.
+
+## Shared Docker networks and resource budgets
+
+Production needs only the tracked `compose.yaml` and one private `.env`:
+copy `.env.compose.example` to `.env`, initialize persistent keys with the
+helper above, prepare the application database and schema, then run
+`docker compose pull` and `docker compose up -d`. The template sets
+`COMPOSE_ENV_FILE=.env`; no server override file is needed. Existing installations
+using `.env.compose` remain supported: keep `COMPOSE_ENV_FILE=.env.compose`
+and pass `--env-file .env.compose` consistently. Development remains unchanged.
+
+By default Compose creates project-specific PostgreSQL, Redis and ingress
+networks. Only app/background join both database networks; Reverb joins Redis
+and ingress. Bundled database containers join only their own backend network.
+The default application network provides outbound access for background tasks.
+To reuse existing Docker services, configure only `.env`, for example:
+
+```dotenv
+COMPOSE_PROFILES=
+POSTGRES_NETWORK=infra-postgres-private
+POSTGRES_NETWORK_EXTERNAL=true
+REDIS_NETWORK=infra-redis-private
+REDIS_NETWORK_EXTERNAL=true
+INGRESS_NETWORK=ingress-nginx_default
+INGRESS_NETWORK_EXTERNAL=true
+DB_HOST=infra-postgres
+REDIS_HOST=infra-redis
+```
+
+Use the actual DNS names/aliases registered on those networks. External networks
+must already exist. PostgreSQL still needs a dedicated database/user and an HBA
+rule for the application subnet; Redis needs an application ACL account and DB
+allocation. Compose does not provision shared-service permissions. Do not enable
+a bundled dependency profile on its shared external network. Network membership
+is not per-application authorization, and Redis logical DBs are not ACL boundaries.
+Nginx can reach `app:8080` (and `reverb:8080` when enabled) on ingress; configure
+its vhost separately. Give each installation a unique Compose project name;
+on shared ingress networks use its unique container name instead of the generic
+`app` alias if multiple projects publish that alias. Backend ports stay unpublished.
+
+App/background default to 512 MiB and 1 CPU each; Reverb defaults to 256 MiB and
+0.5 CPU. Set `APP_MEMORY_LIMIT/CPU_LIMIT`, `BACKGROUND_MEMORY_LIMIT/CPU_LIMIT`
+and `REVERB_MEMORY_LIMIT/CPU_LIMIT` to adjust these ceilings. They are not memory
+reservations or a guarantee the host has enough capacity. Application Docker
+logs rotate at `DOCKER_LOG_MAX_SIZE=10m`, `DOCKER_LOG_MAX_FILES=3` per container.
+`PHP_MEMORY_LIMIT=256M`, `PHP_OPCACHE_MEMORY=96` (MiB), and
+`PHP_FPM_MAX_CHILDREN=4` configure the runtime image; PHP-FPM uses ondemand
+workers. Set a positive child count and size it together with PHP and container
+limits; the PHP limit applies per process. Recreate containers after changing
+these settings. Use a newly built/released image containing this change; older
+images do not consume the PHP variables. Standalone images inherit the same PHP
+defaults; development still disables OPcache using its existing override.

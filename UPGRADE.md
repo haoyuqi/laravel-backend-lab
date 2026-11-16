@@ -3,6 +3,22 @@
 Only action-required or breaking changes are recorded here. Routine changes are
 described in the release notes published with each tag.
 
+## Unreleased: production Compose networks and budgets
+
+Production adds separate backend/ingress networks, application container limits
+and log rotation. Deploy a matching application image: PHP-FPM now uses ondemand
+workers (default 4 children) and OPcache defaults to 96 MiB. Tune the documented
+runtime variables for the host before recreating app roles. Existing `.env.compose`
+files remain supported; when copying the updated template to that filename set
+`COMPOSE_ENV_FILE=.env.compose`. New installations can copy it to `.env` and use
+plain `docker compose up -d`. No schema migration is added by this change.
+
+Stop writers before changing existing network endpoints. Retain keys, data and
+old configuration, grant database access from the new subnet, recreate containers
+and verify actual queue consumption and readiness. External networks must exist;
+shared databases/Redis need separately provisioned restricted application users.
+See [deployment](docs/compose.md#shared-docker-networks-and-resource-budgets).
+
 ## Unreleased: optional shared-service configuration
 
 Existing defaults and pending queue locations are unchanged. No schema migration

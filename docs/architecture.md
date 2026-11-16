@@ -10,6 +10,8 @@ This reference describes the behavior implemented in the current source.
 `compose.yaml` runs published production images; `compose.dev.yaml` independently
 builds a development target with source mounts, dev dependencies, and Vite.
 Both support optional local PostgreSQL and Redis profiles or external services.
+Production networks and resource budgets are configurable through the deployment
+environment; see [shared Docker networks](compose.md#shared-docker-networks-and-resource-budgets).
 App roles share storage, not bootstrap caches; environments have separate default
 project names. Key creation and migrations are explicit. See [Compose deployment](compose.md).
 The reusable Compose CI workflow tests both environments and gates `CI result`,
