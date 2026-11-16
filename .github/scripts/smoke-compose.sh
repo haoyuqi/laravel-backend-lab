@@ -262,4 +262,35 @@ for combination in external local-database local-redis; do
   echo "Compose $mode: $combination connection check passed."
   dc --profile database --profile redis rm -sf database redis >/dev/null
 done
+# Production uses existing backend/ingress networks through .env only.
+if [[ "$mode" == production ]]; then
+  ext create app >/dev/null
+  dc down >/dev/null
+  (
+    export POSTGRES_NETWORK="$dependencies"_postgres POSTGRES_NETWORK_EXTERNAL=true
+    export REDIS_NETWORK="$dependencies"_redis REDIS_NETWORK_EXTERNAL=true
+    export INGRESS_NETWORK="$dependencies"_ingress INGRESS_NETWORK_EXTERNAL=true
+    export PHP_MEMORY_LIMIT=192M PHP_OPCACHE_MEMORY=64 PHP_FPM_MAX_CHILDREN=2
+    export APP_MEMORY_LIMIT=384m
+    sed -e 's/^DB_HOST=.*/DB_HOST=database/' \
+        -e 's/^REDIS_HOST=.*/REDIS_HOST=redis/' \
+        -e 's/^COMPOSE_ENV_FILE=.*/COMPOSE_ENV_FILE=.env/' \
+        "$COMPOSE_ENV_FILE" > .env
+    export COMPOSE_ENV_FILE=.env
+    plain() { docker compose -p "$project" "$@"; }
+    plain config --quiet
+    plain run --rm -T app php artisan migrate --force >/dev/null
+    plain up -d --wait app background
+    url=$(plain port app 8080 | head -1)
+    curl -fsS "http://$url/health/ready" | grep -q '"redis":"healthy"'
+    plain exec -T app php -r 'exit(ini_get("memory_limit") === "192M" && (int) ini_get("opcache.memory_consumption") === 64 ? 0 : 1);'
+    plain exec -T app php-fpm -t
+    test "$(docker inspect --format '{{.HostConfig.Memory}}' "$(plain ps -q app)")" = 402653184
+    test "$(docker inspect --format '{{index .HostConfig.LogConfig.Config "max-size"}}' "$(plain ps -q app)")" = 10m
+    docker run --rm --network "$INGRESS_NETWORK" --entrypoint curl "$test_image" -fsS "http://$project-app-1:8080/up" >/dev/null
+    plain down >/dev/null
+  )
+  test -n "$(ext ps -q database)"
+  test -n "$(ext ps -q redis)"
+fi
 echo "Compose $mode: all dependency combinations, jobs, endpoints, and persistence passed."

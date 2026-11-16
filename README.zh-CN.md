@@ -110,3 +110,5 @@ Laravel Backend Lab 基于 [MIT license](LICENSE) 开源。
 ## 致谢
 
 感谢 [JetBrains](https://www.jetbrains.com/) 对项目的支持。
+
+生产 Compose 支持仅通过一个私有 `.env` 配置内置或公共数据库网络、资源限制，无需服务器覆盖文件。参见[部署配置](docs/compose.md#shared-docker-networks-and-resource-budgets)。

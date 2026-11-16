@@ -8,20 +8,34 @@ x-application: &application
     APP_DEBUG: 'false'
     APP_KEY: ${APP_KEY:?Set a persistent APP_KEY in .env.compose}
     LOG_CHANNEL: stderr
+    PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-256M}
+    PHP_OPCACHE_MEMORY: ${PHP_OPCACHE_MEMORY:-96}
+    PHP_FPM_MAX_CHILDREN: ${PHP_FPM_MAX_CHILDREN:-4}
   volumes:
     - storage:/var/www/html/storage
   init: true
   restart: unless-stopped
   stop_grace_period: 150s
+  networks: [default, postgres, redis]
+  logging:
+    driver: json-file
+    options:
+      max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+      max-file: "${DOCKER_LOG_MAX_FILES:-3}"
 
 services:
   app:
     <<: *application
+    mem_limit: ${APP_MEMORY_LIMIT:-512m}
+    cpus: ${APP_CPU_LIMIT:-1.0}
+    networks: [default, postgres, redis, ingress]
     ports:
       - '${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:8080'
 
   background:
     <<: *application
+    mem_limit: ${BACKGROUND_MEMORY_LIMIT:-512m}
+    cpus: ${BACKGROUND_CPU_LIMIT:-1.0}
     command: [supervisord, '-n', '-c', /etc/supervisor/background.conf]
     healthcheck:
       test: [CMD, supervisorctl, '-c', /etc/supervisor/background.conf, status]
@@ -32,6 +46,9 @@ services:
 
   reverb:
     <<: *application
+    mem_limit: ${REVERB_MEMORY_LIMIT:-256m}
+    cpus: ${REVERB_CPU_LIMIT:-0.5}
+    networks: [default, redis, ingress]
     profiles: [realtime]
     command: [php, artisan, 'reverb:start', '--host=0.0.0.0', '--port=8080']
     ports:
@@ -39,6 +56,7 @@ services:
 
   database:
     image: postgres:18.6
+    networks: [postgres]
     profiles: [database]
     environment:
       POSTGRES_DB: ${DB_DATABASE:-laravel}
@@ -56,6 +74,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    networks: [redis]
     profiles: [redis]
     command: [redis-server, '--appendonly', 'yes']
     volumes:
@@ -71,3 +90,15 @@ volumes:
   storage:
   database:
   redis:
+
+networks:
+  default: {}
+  postgres:
+    name: ${POSTGRES_NETWORK:-${COMPOSE_PROJECT_NAME:-backend-lab}_postgres}
+    external: ${POSTGRES_NETWORK_EXTERNAL:-false}
+  redis:
+    name: ${REDIS_NETWORK:-${COMPOSE_PROJECT_NAME:-backend-lab}_redis}
+    external: ${REDIS_NETWORK_EXTERNAL:-false}
+  ingress:
+    name: ${INGRESS_NETWORK:-${COMPOSE_PROJECT_NAME:-backend-lab}_ingress}
+    external: ${INGRESS_NETWORK_EXTERNAL:-false}
