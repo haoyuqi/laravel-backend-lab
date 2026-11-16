@@ -102,6 +102,9 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/background.conf /etc/supervisor/background.conf
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
+# The admin panel sets viteTheme(), so Filament never registers its default
+# theme at public/css/filament. Publishing and removing it in one layer keeps
+# ~650 KB out of every image without leaving a whiteout behind.
 RUN mkdir -p \
         storage/app/public \
         storage/backup \
@@ -112,6 +115,7 @@ RUN mkdir -p \
         storage/logs \
         bootstrap/cache \
     && php artisan filament:assets \
+    && rm -rf public/css/filament \
     && php artisan storage:link \
     && rm -f bootstrap/cache/*.php \
     && chown -R www-data:www-data storage bootstrap/cache public \

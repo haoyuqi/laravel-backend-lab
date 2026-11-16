@@ -39,6 +39,13 @@ first publish in the repository's package settings.
 The image contains PHP 8.4, nginx, php-fpm, and the database clients used by
 scheduled backups. A host PHP or Node.js installation is not required.
 
+Two asset groups are deliberately excluded. The admin panel sets `viteTheme()`,
+so Filament's default theme under `public/css/filament` is published and removed
+in the same layer. Telescope and Horizon dashboard bundles under `public/vendor`
+stay out of the build context entirely, because neither dashboard runs in this
+image (`TELESCOPE_ENABLED=false`, no Horizon supervisor). Running the dashboards
+in a production container therefore requires republishing their assets.
+
 ## Quick start
 
 The image never generates `APP_KEY`, runs migrations, or creates an administrator
