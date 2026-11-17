@@ -194,6 +194,15 @@ return [
             'database' => env('REDIS_QUEUE_DB', 3),
         ],
 
+        'session' => [
+            'url' => env('REDIS_SESSION_URL', env('REDIS_URL')),
+            'username' => env('REDIS_SESSION_USERNAME', env('REDIS_USERNAME')),
+            'host' => env('REDIS_SESSION_HOST', env('REDIS_HOST', '127.0.0.1')),
+            'password' => env('REDIS_SESSION_PASSWORD', env('REDIS_PASSWORD', null)),
+            'port' => env('REDIS_SESSION_PORT', env('REDIS_PORT', 6379)),
+            'database' => env('REDIS_SESSION_DB', 2),
+        ],
+
     ],
 
 ];

@@ -172,6 +172,41 @@ a container already running: stop old local services explicitly when switching,
 retain their volumes/backups, and recreate app roles with the new configuration.
 Changing initialization credentials does not update an existing PostgreSQL role.
 
+### Cache, session and queue endpoints
+
+`CACHE_STORE`, `SESSION_DRIVER` and `QUEUE_CONNECTION` are independent settings,
+and the Redis connections `cache`, `queue` and `session` each take their own
+host, port, database and credentials (`REDIS_CACHE_*`, `REDIS_QUEUE_*`,
+`REDIS_SESSION_*`). Give each concern its own endpoint when their durability
+needs differ: cache data is disposable, while sessions and jobs are not.
+
+Memcached can back the cache layer instead of Redis. It is not bundled with this
+Compose file: run it as shared infrastructure and join its internal network. The
+image already contains the `memcached` PHP extension, so no rebuild is needed
+beyond the normal image.
+
+```dotenv
+CACHE_STORE=memcached
+MEMCACHED_HOST=infra-memcached
+MEMCACHED_PORT=11211
+MEMCACHED_NETWORK=infra-memcached-private
+MEMCACHED_NETWORK_EXTERNAL=true
+
+SESSION_DRIVER=redis
+SESSION_CONNECTION=session
+REDIS_SESSION_DB=2
+```
+
+Memcached is shared and has neither authentication nor logical databases: any
+container attached to that network can read the entire cache. Keep sessions and
+jobs on Redis, which provides authentication and persistence, and treat the
+Memcached contents as reproducible at any time.
+
+Changing `CACHE_STORE` invalidates the cache-held `queue:restart` signal and any
+`withoutOverlapping` schedule locks. Stop and recreate the `background` service
+instead of relying on `queue:restart`, and keep schedule locks on Redis with
+`Schedule::useCache('redis')` when the cache moves off Redis.
+
 ## Development
 
 ```bash

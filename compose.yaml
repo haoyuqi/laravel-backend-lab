@@ -16,7 +16,7 @@ x-application: &application
   init: true
   restart: unless-stopped
   stop_grace_period: 150s
-  networks: [default, postgres, redis]
+  networks: [default, postgres, redis, memcached]
   logging:
     driver: json-file
     options:
@@ -28,7 +28,7 @@ services:
     <<: *application
     mem_limit: ${APP_MEMORY_LIMIT:-512m}
     cpus: ${APP_CPU_LIMIT:-1.0}
-    networks: [default, postgres, redis, ingress]
+    networks: [default, postgres, redis, memcached, ingress]
     ports:
       - '${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:8080'
 
@@ -99,6 +99,9 @@ networks:
   redis:
     name: ${REDIS_NETWORK:-${COMPOSE_PROJECT_NAME:-backend-lab}_redis}
     external: ${REDIS_NETWORK_EXTERNAL:-false}
+  memcached:
+    name: ${MEMCACHED_NETWORK:-${COMPOSE_PROJECT_NAME:-backend-lab}_memcached}
+    external: ${MEMCACHED_NETWORK_EXTERNAL:-false}
   ingress:
     name: ${INGRESS_NETWORK:-${COMPOSE_PROJECT_NAME:-backend-lab}_ingress}
     external: ${INGRESS_NETWORK_EXTERNAL:-false}
