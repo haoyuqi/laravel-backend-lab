@@ -22,6 +22,7 @@ RUN apk add --no-cache \
         bcmath \
         dom \
         intl \
+        memcached \
         mbstring \
         opcache \
         pcntl \

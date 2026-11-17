@@ -30,7 +30,11 @@ The application reads configuration from environment variables. Start from
 - `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_USERNAME`, `REDIS_PASSWORD`, and
   `REDIS_PORT` configure Redis, including ACL authentication.
 - `CACHE_STORE`, `SESSION_DRIVER`, and `QUEUE_CONNECTION` select state and job
-  storage.
+  storage. The Redis connections `cache`, `queue`, and `session` take separate
+  `REDIS_CACHE_*`, `REDIS_QUEUE_*`, and `REDIS_SESSION_*` overrides.
+- `MEMCACHED_HOST`, `MEMCACHED_PORT`, and `MEMCACHED_PERSISTENT_ID` configure a
+  Memcached cache backend. Memcached is shared and unauthenticated; see
+  [Compose deployment](compose.md#cache-session-and-queue-endpoints).
 - `BROADCAST_CONNECTION`, `REVERB_*`, and `REVERB_CLIENT_*` configure real-time
   events.
 - `MAIL_MAILER` and `MAIL_*` configure outgoing mail.
