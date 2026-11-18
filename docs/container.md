@@ -39,6 +39,11 @@ first publish in the repository's package settings.
 The image contains PHP 8.4, nginx, php-fpm, and the database clients used by
 scheduled backups. A host PHP or Node.js installation is not required.
 
+Alpine packages, including nginx, are resolved from the release repository at
+build time and the base image packages are refreshed with `apk upgrade` in the
+same layer. Rebuild and redeploy the image to pick up security fixes; running
+containers never update their own packages.
+
 Two asset groups are deliberately excluded. The admin panel sets `viteTheme()`,
 so Filament's default theme under `public/css/filament` is published and removed
 in the same layer. Telescope and Horizon dashboard bundles under `public/vendor`
