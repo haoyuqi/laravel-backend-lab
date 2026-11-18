@@ -1,5 +1,9 @@
 # Advisories reported by OSV-Scanner when this file was introduced. Each entry
 # expires automatically; re-review before that date.
+#
+# Node dependency scan only, passed explicitly to the npm scan. The Composer
+# scan uses osv-scanner.composer.toml so an exemption for one ecosystem cannot
+# silence the same advisory in the other.
 
 [[IgnoredVulns]]
 id = "GHSA-fc5q-39xc-vjpf"

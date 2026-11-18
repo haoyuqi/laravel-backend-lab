@@ -409,7 +409,7 @@ jobs:
         run: composer audit
 
       - name: Scan Composer dependencies with OSV-Scanner
-        run: osv-scanner scan --lockfile composer.lock --config osv-scanner.toml --format json --output-file composer-audit.json
+        run: osv-scanner scan --lockfile composer.lock --config osv-scanner.composer.toml --format json --output-file composer-audit.json
 
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
