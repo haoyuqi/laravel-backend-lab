@@ -8,7 +8,8 @@ FROM php:${PHP_VERSION}-fpm-alpine AS base
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /usr/local/bin/
 
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache \
+    && apk add --no-cache \
         nginx \
         nginx-mod-http-brotli \
         brotli \
