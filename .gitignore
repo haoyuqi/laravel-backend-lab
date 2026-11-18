@@ -33,3 +33,7 @@ plan/
 # Playwright artifacts
 tests/e2e/.auth/
 tests/e2e/.results/
+
+# CI dependency scan artifacts
+/composer-audit.json
+/node-audit.json

@@ -395,8 +395,21 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
+      - name: Install OSV-Scanner
+        env:
+          OSV_SCANNER_VERSION: v2.7.1
+          OSV_SCANNER_SHA256: fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8
+        run: |
+          curl -sSLo "$RUNNER_TEMP/osv-scanner" "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  $RUNNER_TEMP/osv-scanner" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/osv-scanner"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
       - name: Audit Composer dependencies
         run: composer audit
+
+      - name: Scan Composer dependencies with OSV-Scanner
+        run: osv-scanner scan --lockfile composer.lock --config osv-scanner.composer.toml --format json --output-file composer-audit.json
 
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -404,8 +417,8 @@ jobs:
           node-version: '24.22.1'
           cache: npm
 
-      - name: Audit Node dependencies
-        run: npm audit --package-lock-only
+      - name: Scan Node dependencies with OSV-Scanner
+        run: osv-scanner scan --lockfile package-lock.json --config osv-scanner.toml --format json --output-file node-audit.json
 
   browser-tests:
     name: Browser tests (${{ matrix.browser }})

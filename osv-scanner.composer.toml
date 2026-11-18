@@ -1,0 +1,3 @@
+# Composer dependency scan only. Add [[IgnoredVulns]] entries here with a
+# reason and effectiveUntil; an empty file is expected when there are no
+# accepted Composer advisories.

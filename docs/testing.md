@@ -84,7 +84,8 @@ requirements.
 - a production installation smoke test;
 - SQLite tests with the exact coverage gate;
 - a MySQL 8.0/8.4 and PostgreSQL 17/18 matrix;
-- security and dependency audits;
+- security and dependency audits (Composer audit plus OSV-Scanner over the npm
+  and Composer lockfiles);
 - Chromium, Firefox, and WebKit browser jobs;
 - a container build that verifies startup safety, admin access, background
   entry points, backups, and volume persistence.
