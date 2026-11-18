@@ -8,4 +8,4 @@
 [[IgnoredVulns]]
 id = "GHSA-fc5q-39xc-vjpf"
 effectiveUntil = 2026-12-18
-reason = "picomatch 4.0.7 is the newest release and the advisory lists no patched version; it reaches only build and test tooling."
+reason = "GHSA-fc5q-39xc-vjpf has no patched release and every affected path is dev-only: picomatch 2.3.2 comes from vite-plugin-full-reload 1.2.0 (via laravel-vite-plugin), and picomatch 4.0.7 comes from vite 6.4.5, tinyglobby 0.2.17, and @parcel/watcher 2.6.0 (via sass); all are dev: true and the root package has no production dependencies."
