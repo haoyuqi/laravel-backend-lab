@@ -1,0 +1,7 @@
+# Advisories reported by OSV-Scanner when this file was introduced. Each entry
+# expires automatically; re-review before that date.
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+effectiveUntil = 2026-12-18
+reason = "picomatch 4.0.7 is the newest release and the advisory lists no patched version; it reaches only build and test tooling."
