@@ -52,7 +52,6 @@ COPY . .
 RUN composer dump-autoload --no-dev --optimize --no-scripts --no-interaction \
     && mkdir -p \
         storage/app/public \
-        storage/backup \
         storage/bing-wallpaper \
         storage/framework/cache \
         storage/framework/sessions \
@@ -119,7 +118,6 @@ RUN chmod 0755 /usr/local/bin/precompress.sh
 # ~650 KB out of every image without leaving a whiteout behind.
 RUN mkdir -p \
         storage/app/public \
-        storage/backup \
         storage/bing-wallpaper \
         storage/framework/cache \
         storage/framework/sessions \

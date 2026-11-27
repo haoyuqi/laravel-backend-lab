@@ -45,6 +45,5 @@ return new class extends Migration
     public function down(): void
     {
         // Legacy encore/laravel-admin tables cannot be restored after cleanup.
-        // Restore from database backup if rollback is needed.
     }
 };

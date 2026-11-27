@@ -25,8 +25,6 @@ endpoint overrides; the framework retains ownership of URL parsing and its
 precedence. Cache and queue connection names are selectable without silently
 moving existing queues. See [configuration](configuration.md#shared-database-and-redis-services)
 for the supported variables and shared-instance boundaries.
-`BACKUP_SCHEDULE_ENABLED` controls registration of the three automatic backup
-tasks; it does not disable other scheduled work or manual backup commands.
 [SharedServiceConfigurationTest](../tests/Feature/SharedServiceConfigurationTest.php)
 verifies defaults, independent overrides, native URL parsing and task selection.
 

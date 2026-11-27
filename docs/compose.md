@@ -44,8 +44,8 @@ docker run --rm -i --user "$(id -u):$(id -g)" --entrypoint php \
 
 This explicit helper fills only empty application, database, and Reverb keys.
 It prints no secrets and preserves existing values on repeat runs. Its temporary
-config mount is outside the application tree and backups. Do not rotate `APP_KEY`
-on upgrade. Set `APP_URL` and `ADMIN_EMAILS` in `.env`, and protect/back up
+config mount is outside the application tree. Do not rotate `APP_KEY`
+on upgrade. Set `APP_URL` and `ADMIN_EMAILS` in `.env`, and protect
 this ignored file separately. Choose `VERSION=latest`, a full release such as
 `3.2.0`, or `3.2.0@sha256:<published-index-digest>` to pin the artifact.
 
@@ -160,16 +160,14 @@ connect isolated networks. Keep database ports unpublished and explicitly grant
 PostgreSQL database/user/subnet access. Do not give applications database or
 Redis administrator credentials.
 
-Set `BACKUP_SCHEDULE_ENABLED=false` when another system owns backup scheduling;
-this leaves the application's workers and other scheduled jobs running. Do not
-change a Redis DB/connection on an installation with pending jobs without the
-queue migration procedure in [UPGRADE.md](../UPGRADE.md).
+Do not change a Redis DB/connection on an installation with pending jobs without
+the queue migration procedure in [UPGRADE.md](../UPGRADE.md).
 
 There are no mandatory `depends_on` links to optional dependencies. Start bundled
 services with `--wait`, or check external availability before starting app roles.
 Readiness reports database and Redis health. Disabling a profile does not stop
 a container already running: stop old local services explicitly when switching,
-retain their volumes/backups, and recreate app roles with the new configuration.
+retain their volumes, and recreate app roles with the new configuration.
 Changing initialization credentials does not update an existing PostgreSQL role.
 
 ### Cache, session and queue endpoints
@@ -351,11 +349,11 @@ built from this revision or a later release: earlier images do not contain
 - The combined background role replaces the HTTP healthcheck with a Supervisor
   process check. Also monitor queue progress and actual scheduled executions. Production roles
   restart unless stopped; workers get 150 seconds to stop (job timeout: 120).
-- Shared application storage retains uploads, cache/sessions, and backups;
+- Shared application storage retains uploads and cache/sessions;
   database and Redis have separate volumes. Never share `bootstrap/cache`.
   If using configuration caches, rebuild them explicitly in each app role.
-- Read [UPGRADE.md](../UPGRADE.md), back up database/storage, retain the old
-  digest/configuration, and pull the new `VERSION` before maintenance.
+- Read [UPGRADE.md](../UPGRADE.md), retain the old digest/configuration, and
+  pull the new `VERSION` before maintenance.
 - Stop `background` and optional Reverb before migration. Maintenance
   mode alone does not stop writers. Execute `run --rm app php artisan migrate
   --force` using the new version; recreate app roles, verify behavior, then reopen
@@ -364,12 +362,11 @@ built from this revision or a later release: earlier images do not contain
   writers and follow migration-specific recovery instructions. Do not
   automatically run `migrate:rollback` or `migrate:fresh`.
 - `down` retains named volumes. **Never use `down --volumes` for upgrades.**
-  Database major upgrades are separate backup/restore operations.
+  Database major upgrades are separate dump/restore operations.
 
-See [operations](operations.md) for current backup limitations and off-host
-restore drills. Local archives alone are not disaster recovery. PostgreSQL 18.6
-is the Compose baseline; verify `pg_dump`/`mysqldump` compatibility and rehearse a
-dump/restore before using newer external database majors. Backup redesign is #198.
+PostgreSQL 18.6 is the Compose baseline; verify `pg_dump`/`mysqldump`
+compatibility and rehearse a dump/restore before using newer external database
+majors.
 
 PostgreSQL 18 mounts its volume at `/var/lib/postgresql` (the image's default
 data directory is version-specific underneath it). An existing PostgreSQL 17
