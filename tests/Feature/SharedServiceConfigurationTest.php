@@ -3,9 +3,7 @@
 namespace Tests\Feature;
 
 use Closure;
-use Illuminate\Console\Scheduling\Schedule as Scheduler;
 use Illuminate\Support\ConfigurationUrlParser;
-use Illuminate\Support\Facades\Schedule;
 use Tests\TestCase;
 
 class SharedServiceConfigurationTest extends TestCase
@@ -16,14 +14,12 @@ class SharedServiceConfigurationTest extends TestCase
             $database = require config_path('database.php');
             $queue = require config_path('queue.php');
             $cache = require config_path('cache.php');
-            $backup = require config_path('backup.php');
 
             $this->assertSame(0, $database['redis']['default']['database']);
             $this->assertSame(1, $database['redis']['cache']['database']);
             $this->assertSame(3, $database['redis']['queue']['database']);
             $this->assertSame('default', $queue['connections']['redis']['connection']);
             $this->assertSame('cache', $cache['stores']['redis']['connection']);
-            $this->assertTrue($backup['schedule']['enabled']);
         });
     }
 
@@ -137,48 +133,11 @@ class SharedServiceConfigurationTest extends TestCase
         });
     }
 
-    public function test_backup_schedule_can_be_disabled_without_removing_other_tasks(): void
-    {
-        $this->withEnvironment(['BACKUP_SCHEDULE_ENABLED' => 'false'], function (): void {
-            $backup = require config_path('backup.php');
-            $this->assertFalse($backup['schedule']['enabled']);
-            $commands = $this->scheduledCommands($backup['schedule']['enabled']);
-            $this->assertCount(0, array_filter($commands, fn ($command) => str_contains($command, 'backup:')));
-            $this->assertTrue((bool) array_filter($commands, fn ($command) => str_contains($command, 'save:visits-count')));
-        });
-    }
-
-    public function test_backup_schedule_remains_enabled_by_default(): void
-    {
-        $commands = $this->scheduledCommands(true);
-        foreach (['backup:run', 'backup:clean', 'backup:monitor'] as $command) {
-            $this->assertCount(1, array_filter($commands, fn ($scheduled) => str_contains($scheduled, $command)));
-        }
-    }
-
-    private function scheduledCommands(bool $enabled): array
-    {
-        $original = Schedule::getFacadeRoot();
-        $previous = config('backup.schedule.enabled');
-        $schedule = new Scheduler;
-        Schedule::swap($schedule);
-        config(['backup.schedule.enabled' => $enabled]);
-
-        try {
-            require base_path('routes/console.php');
-
-            return array_map(fn ($event) => $event->command ?? '', $schedule->events());
-        } finally {
-            Schedule::swap($original);
-            config(['backup.schedule.enabled' => $previous]);
-        }
-    }
-
     private function withEnvironment(array $values, Closure $callback): void
     {
         $names = ['REDIS_URL', 'REDIS_HOST', 'REDIS_PORT', 'REDIS_USERNAME', 'REDIS_PASSWORD',
             'REDIS_DB', 'REDIS_CACHE_DB', 'REDIS_QUEUE_DB', 'REDIS_QUEUE_CONNECTION',
-            'REDIS_CACHE_CONNECTION', 'BACKUP_SCHEDULE_ENABLED', 'DB_SSLMODE'];
+            'REDIS_CACHE_CONNECTION', 'DB_SSLMODE'];
         foreach (['CACHE', 'QUEUE'] as $name) {
             foreach (['URL', 'HOST', 'PORT', 'USERNAME', 'PASSWORD'] as $field) {
                 $names[] = "REDIS_{$name}_{$field}";

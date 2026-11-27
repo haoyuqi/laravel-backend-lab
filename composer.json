@@ -15,7 +15,6 @@
         "laravel/reverb": "^1.0",
         "laravel/telescope": "^5.0",
         "laravel/tinker": "^3.0",
-        "spatie/laravel-backup": "^10.0",
         "spatie/laravel-ignition": "^2.4",
         "torann/geoip": "^3.0"
     },

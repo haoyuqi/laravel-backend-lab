@@ -36,9 +36,6 @@ is added. New variables are documented in
   existing URL precedence is preserved.
 - With restricted ACL users, do not run Redis `cache:clear` or `optimize:clear`;
   use targeted cache invalidation and explicit config/route/view cache clearing.
-- Set `BACKUP_SCHEDULE_ENABLED=false` only when automatic application backups
-  are intentionally not required; rebuild cached configuration and recreate
-  roles/restart the scheduler. Manual commands are unaffected.
 
 ## v3.0.8 to v3.1.0
 
@@ -55,9 +52,6 @@ endpoint to runtime configuration. It adds no database migration.
   different host than the application.
 - Startup never migrates, creates administrators, or replaces `APP_KEY`. Run
   `php artisan migrate --force` and `php artisan make:filament-user` explicitly.
-- Scheduled backups no longer send success notifications, and a successful
-  backup no longer fails when `BACKUP_NOTIFICATION_EMAIL` is unset. Failure
-  notifications still require a valid recipient and mail transport.
 - Set `APP_VERSION=3.1.0` for deployments that do not use the container image.
 
 ## v3.0.2 to v3.0.8
@@ -106,7 +100,7 @@ deduplication. Existing log rows and their IDs are preserved.
    before starting the new workers or reopening traffic. The new jobs require
    the event-ID columns. On MySQL, DDL may commit partially; inspect migration
    status and schema if a migration fails. Do not drop or recreate log tables.
-4. Review `TRUSTED_PROXIES`, backup notification settings, and demo access as
+4. Review `TRUSTED_PROXIES` and demo access as
    documented in the README. The demos now default to disabled; queue creation
    uses POST, and the item limit is 1,000. Blacklist enforcement queries the
    database on every request, so account for that database load.
@@ -135,12 +129,12 @@ statistics and blacklist features. Install the committed lock files; do not run
 1. Rehearse on an isolated copy of production data and configuration. Upgrade
    PHP CLI, web/FPM and worker runtimes to 8.4+, with the extensions required by
    `composer.lock`. Keep the previous release artifact, environment settings,
-   database backup and Redis recovery point. Older installations must first
+   and Redis recovery point. Older installations must first
    complete the upgrade procedures for their version below.
 2. Enable maintenance mode (`php artisan down`), pause the scheduler and stop
    queue workers and other statistics writers. Maintenance mode alone does not
    stop background jobs. Check for duplicate daily statistics using the SQL
-   below before proceeding; retain the backup even after deduplication.
+   below before proceeding; retain the pre-upgrade data even after deduplication.
 3. Deploy v3.0.0 and preserve the existing `.env` and `APP_KEY`. Set
    `APP_VERSION=3.0.0`. Clear previous compiled configuration with
    `php artisan optimize:clear`. Install dependencies with
@@ -197,8 +191,8 @@ The new audit and duplicate archive tables may remain to preserve history.
 The statistics unique constraint may also remain, but it does not make the
 old non-idempotent statistics writer safe to retry; keep that writer paused
 until a rollback-compatible plan is verified. Removing the constraint does
-not restore discarded snapshots. Exact data restoration requires the backup
-and reconciliation of writes made since deployment. Never drop audit history
+not restore discarded snapshots. Exact data restoration requires the pre-upgrade
+data and reconciliation of writes made since deployment. Never drop audit history
 or reinsert archived rows automatically. See the migration-specific notes below.
 
 ### Real-time updates: Socket.IO → Reverb (#137)
@@ -237,8 +231,8 @@ logs. Historical admin actions are not backfilled.
    blacklist change, then log out and log back in. Check the login/logout rows,
    resource type/ID, actor, safe before/after state, and time. Unauthorized
    users must remain denied. Exit maintenance mode after verification.
-4. Include the new table in backups and decide how long operator names and IPs
-   should be retained. Pruning is manual and dry-run by default; see the README.
+4. Decide how long operator names and IPs should be retained. Pruning is
+   manual and dry-run by default; see the README.
 
 If the log table is missing or log writes fail, audited admin data changes fail
 and roll back instead of silently succeeding without history. Bulk actions
@@ -424,7 +418,7 @@ attempting TTL maintenance; failure to expire one key does not skip the other.
 Verify daily row uniqueness, the retained archive and Redis TTLs before
 restarting writers. Rollback removes the unique constraint but deliberately
 keeps the archive and deduplicated data. Restoring the exact original dataset
-requires the pre-deployment backup; do not automatically reinsert archived rows
+requires the pre-deployment data; do not automatically reinsert archived rows
 over newer statistics. Keep the archive until your retention policy permits
 removal.
 
@@ -469,8 +463,7 @@ manually preserve packages that are no longer declared in `package.json`.
 1. Rehearse the deployment in staging and verify all pages that load project
    JavaScript or CSS, including the real-time clock and queue example.
 2. Preserve the current release artifact and environment configuration as the
-   rollback point. Although this release has no application database migration,
-   use the normal production backup policy before every deployment.
+   rollback point. This release has no application database migration.
 3. Confirm that the v2.1.0 database migration was completed:
 
    ~~~bash
@@ -715,8 +708,8 @@ schema migration removes these tables:
 - **admin_menu**
 - **admin_users**
 
-The cleanup migration intentionally has no automatic down migration. A full
-database backup is the only supported way to recover this data.
+The cleanup migration intentionally has no automatic down migration. This
+data cannot be recovered after cleanup.
 
 #### Packages
 
@@ -735,8 +728,7 @@ Notable replacements and upgrades include:
 - Filament 3 replaces Laravel Admin.
 - The Bing wallpaper integration is maintained inside the application.
 - **laravel-lang/common** replaces **overtrue/laravel-lang**.
-- Horizon moves to 5.x, Telescope to 5.x, Tinker to 3.x, and Spatie Laravel
-  Backup to 10.x.
+- Horizon moves to 5.x, Telescope to 5.x, and Tinker to 3.x.
 - PHPUnit moves to 12.x, Dusk to 8.x, Collision to 8.x, Debugbar to 4.x,
   and Laravel IDE Helper to 3.x.
 - Composer's post-autoload hook now runs **filament:upgrade**.
@@ -769,10 +761,7 @@ framework class, update those extensions before production deployment.
 
 - The Fruitcake CORS package is removed in favor of Laravel's built-in CORS
   middleware. Re-test any deployment-specific CORS policy.
-- Backup configuration is upgraded for the new Spatie package version. Review
-  archive compression, encryption, destinations, retention, and notification
-  recipients before relying on scheduled backups.
-- Existing schedules are registered in **routes/console.php**: backups, visit
+- Existing schedules are registered in **routes/console.php**: visit
   statistics, file cleanup, blacklist cache cleanup, Telescope pruning, Bing
   wallpaper download, GeoIP cleanup, and the minute-level time event.
 - Blacklist and visitor-log relationships now include soft-deleted related
@@ -849,32 +838,12 @@ Decide which legacy administrators must be retained and collect a unique email
 address for each one. Decide whether legacy roles, menu definitions, and
 operation logs must be exported for audit or archival purposes.
 
-#### 2. Back up the current release and database
+#### 2. Preserve the current release and configuration
 
-Create and verify both a deployment/code rollback point and a full database
-backup before entering the irreversible part of the upgrade.
-
-Using the existing v2.0.0 application backup integration:
-
-~~~bash
-php artisan backup:run --only-db
-~~~
-
-Or use the database-native backup command appropriate for the deployment:
-
-~~~bash
-# MySQL
-mysqldump --single-transaction --routines --triggers DATABASE_NAME > pre-v2.1.0.sql
-
-# PostgreSQL
-pg_dump --format=custom --file=pre-v2.1.0.dump DATABASE_NAME
-~~~
-
-Do not continue until the backup exists, is non-empty, and has been test-restored
-or validated using the database platform's restore tooling.
-
-Also retain a secure copy of the current production environment configuration.
-Do not commit or paste that file into an issue, pull request, or deployment log.
+Create and verify a deployment/code rollback point before entering the
+irreversible part of the upgrade. Retain a secure copy of the current
+production environment configuration. Do not commit or paste that file into an
+issue, pull request, or deployment log.
 
 #### 3. Enable maintenance mode
 
@@ -1002,9 +971,6 @@ Verify all of the following before considering the upgrade complete:
 - Application error rates, database errors, failed jobs, and response latency
   remain normal.
 
-Keep the database backup until the release has completed its production
-observation period.
-
 ### Rollback procedure
 
 #### Before running admin:migrate-users
@@ -1028,7 +994,7 @@ not run yet.
 
 1. Keep the application in maintenance mode.
 2. Stop queue workers and scheduled jobs.
-3. Restore the complete pre-v2.1.0 database backup.
+3. Restore the pre-v2.1.0 database state.
 4. Redeploy v2.0.0 and reinstall its locked dependencies and assets.
 5. Clear caches, restart workers, and verify the legacy administration panel.
 6. Bring the application online only after code and database versions match.
@@ -1041,7 +1007,6 @@ roles, permissions, menus, or operation logs.
 
 - [ ] Staging rehearsal completed with a recent production snapshot.
 - [ ] PHP, Node.js, database, and Redis versions meet the requirements.
-- [ ] Full database backup created and restore-tested.
 - [ ] Existing **APP_KEY** preserved.
 - [ ] **APP_VERSION=2.1.0** configured.
 - [ ] **ADMIN_EMAILS** configured and reviewed.
@@ -1052,4 +1017,4 @@ roles, permissions, menus, or operation logs.
 - [ ] Database migrations completed without bypassing the account guard.
 - [ ] Filament, Horizon, Telescope, visitors, and blacklist workflows verified.
 - [ ] Queues, schedules, monitoring, and health checks verified.
-- [ ] Rollback owner, backup location, and observation window recorded.
+- [ ] Rollback owner, rollback point, and observation window recorded.

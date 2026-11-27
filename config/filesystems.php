@@ -64,10 +64,6 @@ return [
             'url' => env('AWS_URL'),
         ],
 
-        'backup' => [
-            'driver' => 'local',
-            'root' => storage_path('backup'),
-        ],
     ],
 
 ];

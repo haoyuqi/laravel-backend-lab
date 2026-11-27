@@ -88,7 +88,7 @@ requirements.
   and Composer lockfiles);
 - Chromium, Firefox, and WebKit browser jobs;
 - a container build that verifies startup safety, admin access, background
-  entry points, backups, and volume persistence.
+  entry points, and volume persistence.
 
 Every job must pass before the aggregate `CI result` succeeds. See
 [test isolation and coverage](architecture.md#test-isolation-and-coverage-gate)

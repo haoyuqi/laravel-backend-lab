@@ -36,8 +36,8 @@ first publish in the repository's package settings.
   widgets, and scheduled maintenance.
 - Network access to the database and Redis from the container.
 
-The image contains PHP 8.4, nginx, php-fpm, and the database clients used by
-scheduled backups. A host PHP or Node.js installation is not required.
+The image contains PHP 8.4, nginx, php-fpm, and the database clients used for
+operational maintenance. A host PHP or Node.js installation is not required.
 
 Alpine packages, including nginx, are resolved from the release repository at
 build time and the base image packages are refreshed with `apk upgrade` in the
@@ -97,7 +97,7 @@ Optional settings, including cache, session, queue, mail, storage, and real-time
 values, are listed in [configuration](configuration.md).
 
 Never mount a `.env` file into the application tree. Pass configuration as environment variables so
-secrets are not stored in an image layer or a backup archive.
+secrets are not stored in an image layer.
 
 ## Ports and health
 
@@ -121,7 +121,6 @@ container.
 | --- | --- |
 | `storage/app` | Application files and uploads |
 | `storage/app/public` | Public files served through `public/storage` |
-| `storage/backup` | Backup archives |
 | `storage/logs` | Log files when not logging to stderr |
 | `storage/framework` | Cache, sessions, and compiled views |
 
@@ -146,7 +145,7 @@ action-required changes.
 
 ## Next steps
 
-- [Operations](operations.md): queue, scheduler, Horizon, logs, and backups.
+- [Operations](operations.md): queue, scheduler, Horizon, and logs.
 - [Real-time updates](realtime.md): Reverb server and browser endpoints.
 - [Configuration](configuration.md): every supported environment variable.
 - [Testing](testing.md): local and CI verification.

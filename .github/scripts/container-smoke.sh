@@ -128,9 +128,6 @@ verify_runtime() {
     docker exec lab-app php artisan make:filament-user \
         --name=Admin --email="$ADMIN_EMAIL" --password="$ADMIN_PASSWORD" > /dev/null
 
-    docker exec lab-app php artisan backup:run
-    test -n "$(docker exec lab-app sh -c 'find storage/backup -name "*.zip" | head -n 1')"
-
     test "$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL/")" = "200"
     test "$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL/admin/login")" = "200"
     test "$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL/admin")" = "302"
@@ -140,7 +137,7 @@ verify_runtime() {
     grep -q '"redis":"healthy"' /tmp/health.json
 
     docker exec lab-app php artisan schedule:list > /tmp/schedule-list.txt
-    grep -q 'backup:run' /tmp/schedule-list.txt
+    grep -q 'save:visits-count' /tmp/schedule-list.txt
 
     set +e
     docker exec lab-app sh -c 'timeout -s TERM 10 php artisan schedule:work' > /tmp/schedule-work.log 2>&1

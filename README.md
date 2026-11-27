@@ -22,7 +22,7 @@
 
 Laravel Backend Lab is a reference application built around a production-style
 Laravel backend: an administration panel, visitor analytics, queues, scheduled
-maintenance, backups, and observability in one codebase. It is an application,
+maintenance, and observability in one codebase. It is an application,
 not a reusable package or a generic starter kit.
 
 ## Requirements
@@ -101,7 +101,7 @@ environment variables, and persistent volumes.
 | Document | Contents |
 | --- | --- |
 | [Configuration](docs/configuration.md) | Environment variables, services, and runtime options |
-| [Operations](docs/operations.md) | Queue workers, scheduler, logs, and backups |
+| [Operations](docs/operations.md) | Queue workers, scheduler, and logs |
 | [Real-time updates](docs/realtime.md) | Reverb and Echo setup |
 | [Testing](docs/testing.md) | PHPUnit, coverage, and browser tests |
 | [Architecture](docs/architecture.md) | Feature map and runtime contracts |

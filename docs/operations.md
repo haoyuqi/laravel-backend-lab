@@ -58,7 +58,6 @@ The scheduler runs these entries from `routes/console.php`:
 | 00:20 | Delete yesterday's blacklist cache key |
 | 00:25 | `queue:prune-failed --hours=168` |
 | 00:30 | `telescope:prune --hours=72` |
-| 01:00 / 01:10 / 01:20 | `backup:run`, `backup:clean`, `backup:monitor` |
 | 05:00 | `download:bing-wallpaper` |
 | 07:00 and 13:00 | Delete today's blacklist cache key |
 | Every minute | Broadcast the time event (`push-time` queue) |
@@ -77,41 +76,6 @@ older than `VISITOR_RETENTION_DAYS` (30 by default), and `queue:prune-failed`
 drops failed job payloads older than seven days.
 Container deployments should use `LOG_CHANNEL=stderr` and let the container
 runtime handle rotation.
-
-## Backups
-
-Set `BACKUP_SCHEDULE_ENABLED=false` to omit all three automatic backup tasks
-(`backup:run`, `backup:clean`, `backup:monitor`) while retaining the other
-scheduled jobs. The default is `true`, preserving existing installations.
-Manual backup commands remain available. After changing the environment,
-rebuild any cached configuration in each application role and restart the
-long-running scheduler (recreate Compose roles when their environment changes).
-
-Backups use `spatie/laravel-backup` and, when enabled, run from the scheduler:
-
-- `backup:run` archives the configured files and dumps the database selected by
-  `DB_CONNECTION`.
-- `backup:clean` applies the retention policy.
-- `backup:monitor` checks that the newest backup is under one day old and total
-  storage stays under 5,000 MB.
-
-Archives are written to the local `backup` disk at `storage/backup` and stay
-local unless the backup disk is changed. Configure `BACKUP_NOTIFICATION_EMAIL`
-with a valid recipient and a working mail transport to receive failure and
-monitor notifications. Successful backups are not emailed.
-
-The database dump shells out to `mysqldump`, `pg_dump`, or `sqlite3`. In
-containers, the client major version must not be older than the database server:
-`pg_dump` and `mysqldump` refuse to dump a newer server. Upgrade the client
-package and rebuild the image when the database server moves to a newer major
-version.
-
-Periodically restore an archive into an isolated database and verify it. Backups
-contain personal data and are not encrypted unless `BACKUP_ARCHIVE_PASSWORD` is
-configured.
-
-Do not mount `.env` into an application directory that is included in the
-archive; pass secrets as runtime environment variables instead.
 
 ## Cached configuration
 

@@ -14,13 +14,6 @@ Schedule::call(function () {
     event(new PushTimeEvent);
 })->everyMinute();
 
-// Database and application backup; manual commands remain available.
-if (config('backup.schedule.enabled')) {
-    Schedule::command('backup:run')->dailyAt('01:00')->withoutOverlapping(120);
-    Schedule::command('backup:clean')->dailyAt('01:10')->withoutOverlapping(120);
-    Schedule::command('backup:monitor')->dailyAt('01:20')->withoutOverlapping(120);
-}
-
 // Visits and logs cleanup
 Schedule::command('save:visits-count')->dailyAt('00:05')->withoutOverlapping(30);
 Schedule::command('clear:files')->dailyAt('00:10')->withoutOverlapping(30);

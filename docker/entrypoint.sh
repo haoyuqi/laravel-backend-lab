@@ -7,7 +7,6 @@ cd /var/www/html
 
 for directory in \
     storage/app/public \
-    storage/backup \
     storage/bing-wallpaper \
     storage/framework/cache \
     storage/framework/sessions \

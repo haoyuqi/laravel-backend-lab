@@ -22,7 +22,6 @@ yarn-error.log
 /public/fonts/
 /public/js/
 /storage/bing-wallpaper/
-/storage/backup/
 
 # Local planning documents
 plan/

@@ -102,7 +102,6 @@ REDIS_QUEUE_DB=1
 REDIS_CACHE_CONNECTION=cache
 REDIS_PREFIX=backend_lab:
 CACHE_PREFIX=cache:
-BACKUP_SCHEDULE_ENABLED=false
 ```
 
 Supply the host, port and private password separately. These DB assignments are
